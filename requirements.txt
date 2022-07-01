@@ -1,2 +1,3 @@
 torch==1.11.0
 numpy
+git+https://github.com/intelligent-environments-lab/CityLearn.git@citylearn_2022

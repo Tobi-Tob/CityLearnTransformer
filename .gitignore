@@ -138,14 +138,11 @@ dmypy.json
 cython_debug/
 
 *.zip
-data/raw/*
-data/prepared/*
 
 *.pickle
 .vscode
 .DS_Store
 
-data/
-data/*
+
 *.tar.gz
 *.serialized
