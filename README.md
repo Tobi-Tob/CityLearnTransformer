@@ -34,21 +34,21 @@ This repository is the NeurIPS 2022 Citylearn Challenge **Submission template an
 #  Competition Overview
 [The CityLearn Challenge 2022](https://www.aicrowd.com/challenges/neurips-2022-citylearn-challenge) focuses on the opportunity brought on by home battery storage devices and photovoltaics. It leverages [CityLearn](https://intelligent-environments-lab.github.io/CityLearn/), a Gym Environment for building distributed energy resource management and demand response. The challenge utilizes 1 year of operational electricity demand and PV generation data from 17 single-family buildings in the Sierra Crest home development in Fontana, California, that were studied for _Grid integration of zero net energy communities_.
 
-Participants will develop energy management agent(s) for battery charge and discharge control in each building with the goals of minimizing the net electricity demand from the grid, the monetary cost of electricity drawn from the grid, and the CO<sub>2</sub> emissions when electricity demand is satisfied by the grid.
+Participants will develop energy management agent(s) for battery charge and discharge control in each building with the goals of minimizing the monetary cost of electricity drawn from the grid, and the CO<sub>2</sub> emissions when electricity demand is satisfied by the grid.
 
 ### Competition Phases
 The challenge consists of two phases: 
-- In **Phase I**, TODO
+- In **Phase I**, the leaderboard will reflect the ranking of participants' submissions based on the 5/17 buildings training dataset.
 
-- In **Phase II**, TODO
+- In **Phase II**, the leaderboard will reflect the ranking of participants' submissions based on an unseen 5/17 buildings validation dataset as well as the seen 5/17 buildings dataset. The train and validation dataset scores will carry 40% and 60% weights respectively in the Phase 2 score.
 
-- In **Phase III**, TODO
+- In **Phase III**, participants' submissions will be evaluated on the 5/17 buildings training, 5/17 validation and remaining 7/17 test datasets. The train, validation and test dataset scores will carry 20%, 30% and 50% weights respectively in the Phase 3 score. The winner(s) of the competition will be decided using the leaderboard ranking in Phase III.
 
 
 
 #  Getting Started
 1. **Sign up** to join the competition [on the AIcrowd website](https://www.aicrowd.com/challenges/neurips-2022-citylearn-challenge).
-2. **Install** the Citylearn Simulator [from this link - TODO]().
+2. **Install** the Citylearn Simulator [from this link](https://pypi.org/project/CityLearn/).
 3. **Fork** this starter kit repository. You can use [this link](https://gitlab.aicrowd.com/aicrowd/challenges/citylearn-challenge-2022/citylearn-2022-starter-kit/-/forks/new) to create a fork.
 4. **Clone** your forked repo and start developing your autonomous racing agent.
 5. **Develop** your controller agents following the template in [how to write your own agent](#how-to-write-your-own-agent) section.
@@ -147,10 +147,15 @@ This JSON is used to map your submission to the challenge - so please remember t
 
 # Other Concepts
 ### Evaluation Metrics
-TODO
+Participants' submissions will be evaluated upon an equally weighted sum of two metrics at the aggregated district level where _district_ refers to the collection of buildings in the environment. The metrics include 1) district electricity cost, $`C_\textrm{entry}`$ and 2) district CO<sub>2</sub> emissions, $`G_\textrm{entry}`$ with the goal of minimizing the sum of each metric over the simulation period, $`t=0`$ to $`t=n`$ and $`e`$ episodes. The simulation period is 8,760 time steps i.e. one year, and participants can train on as many episodes of the simulation period, $`e`$, as needed.  $`C_\textrm{entry}`$ is bore by the individual buildings (customers) and $`G_\textrm{entry}`$ is an environmental cost. Each metric is normalized against those of the baseline where there is no electrical energy storage in batteries ($`C_\textrm{no battery}`$, $`G_\textrm{no battery}`$) such that values lower than that of the baseline are preferred.
+
+```math
+\textrm{score} = \frac{C_\textrm{entry}}{C_\textrm{no battery}} 
+    + \frac{G_\textrm{entry}}{G_\textrm{no battery}}
+```
 
 ### Ranking Criteria
-TODO
+Participants are ranked in ascending order of $`\textrm{score}`$. The winner of each [phase](#Competition_Phases) will be the participant with the least $`\textrm{score}`$. In the event that multiple participants have the same $`\textrm{score}`$ in any of the phases, the ties will be broken in descending order of agent complexity whcih we interprete to be the simulation runtime.
 
 ### Time constraints
 TODO
