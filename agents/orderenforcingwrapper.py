@@ -1,6 +1,6 @@
 from gym.spaces import Box
-
 from agents.user_agent import UserAgent
+import sys
 
 def dict_to_action_space(aspace_dict):
     return Box(
@@ -34,6 +34,10 @@ class OrderEnforcingAgent:
             action_space = self.action_space[agent_id]
             actions.append(self.agent.register_reset(obs[agent_id], action_space, agent_id))
         return actions
+    
+    def raise_aicrowd_error(self, msg):
+        print(msg)
+        sys.exit(0)
 
     def compute_action(self, observation):
         """Get observation return action"""
