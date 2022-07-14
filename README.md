@@ -161,7 +161,11 @@ Participants' submissions will be evaluated upon an equally weighted sum of two 
 ```
 
 ### Ranking Criteria
-Participants are ranked in ascending order of $`\textrm{score}`$. The winner of each [phase](#Competition_Phases) will be the participant with the least $`\textrm{score}`$. In the event that multiple participants have the same $`\textrm{score}`$ in any of the phases, the ties will be broken in descending order of agent complexity whcih we interprete to be the simulation runtime.
+Participants are ranked in ascending order of $`\textrm{score}`$ as the goal of the competition is to minimize $`\textrm{score}`$. 
+
+In Phase 1, the training dataset score will carry 100% weight. By Phase 2, the training and validation dataset scores will carry 40% and 60% weights respectively. Finally in Phase 3, the training, validation and test dataset scores will carry 20%, 30% and 50% weights respectively .
+
+The winner of each [phase](#Competition_Phases) will be the participant with the least weighted sum of scores from all considered datasets for the phase. In the event that multiple participants have the same $`\textrm{score}`$ in any of the phases, the ties will be broken in ascending order of agent complexity which, we interpret to be the simulation runtime.
 
 ### Time constraints
 TODO
