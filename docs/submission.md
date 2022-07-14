@@ -9,10 +9,10 @@ The evaluator will create an instance of `OrderEnforcingAgent` from `orderenforc
 
 ## Where to write my code?
 
-Please refer [How to write your own agent?](../readme.md#how-to-write-your-own-agent) section in the [readme.md](../readme.md)
+Please refer to [How to write your own agent?](../readme.md#how-to-write-your-own-agent) and [How to write your own reward function?](../readme.md#how-to-write-your-own-reward-function) sections in the [readme.md](../readme.md)
    
 
-Once done, you can specify the agent you want to run in `agents/user_agent.py`
+Once done, you can specify the agent you want to run in `agents/user_agent.py` and reward function in `rewards/get_reward.py`.
 
 ## Setting up SSH keys
 

@@ -2,7 +2,7 @@
   "root_directory": null,
   "central_agent": false,
   "simulation_start_time_step": 0,
-  "simulation_end_time_step": 1000,
+  "simulation_end_time_step": 8759,
   "episodes": 1,
   "seconds_per_time_step": 3600,
   "observations": {
@@ -181,7 +181,7 @@
       "update_per_time_step": 2
     }
   },
-  "reward_function": "citylearn.reward_function.IndependentSACReward",
+  "reward_function": "rewards.user_reward.UserReward",
   "buildings": {
     "Building_1": {
       "include": true,

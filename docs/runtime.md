@@ -9,7 +9,7 @@ Few of the most common ways are as follows:
     ```
     # Put ALL of the current pip3 packages on your system in the submission
     >> pip3 freeze >> requirements.txt
-    >> cat requirementst.txt
+    >> cat requirements.txt
     aicrowd_api
     coloredlogs
     matplotlib

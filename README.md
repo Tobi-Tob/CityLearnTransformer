@@ -32,26 +32,26 @@ This repository is the NeurIPS 2022 Citylearn Challenge **Submission template an
 
 
 #  Competition Overview
-[The CityLearn Challenge 2022](https://www.aicrowd.com/challenges/neurips-2022-citylearn-challenge) focuses on the opportunity brought on by home battery storage devices and photovoltaics. It leverages [CityLearn](https://intelligent-environments-lab.github.io/CityLearn/), a Gym Environment for building distributed energy resource management and demand response. The challenge utilizes 1 year of operational electricity demand and PV generation data from 17 single-family buildings in the Sierra Crest home development in Fontana, California, that were studied for _Grid integration of zero net energy communities_.
+[The CityLearn Challenge 2022](https://www.aicrowd.com/challenges/neurips-2022-citylearn-challenge) focuses on the opportunity brought on by home battery storage devices and photovoltaics. It leverages [CityLearn](https://github.com/intelligent-environments-lab/CityLearn/tree/citylearn_2022), a Gym Environment for building distributed energy resource management and demand response. The challenge utilizes 1 year of operational electricity demand and PV generation data from 17 single-family buildings in the Sierra Crest home development in Fontana, California, that were studied for _Grid integration of zero net energy communities_.
 
-Participants will develop energy management agent(s) for battery charge and discharge control in each building with the goals of minimizing the monetary cost of electricity drawn from the grid, and the CO<sub>2</sub> emissions when electricity demand is satisfied by the grid.
+Participants will develop energy management agent(s) and their reward function for battery charge and discharge control in each building with the goals of minimizing the monetary cost of electricity drawn from the grid, and the CO<sub>2</sub> emissions when electricity demand is satisfied by the grid.
 
 ### Competition Phases
 The challenge consists of two phases: 
-- In **Phase I**, the leaderboard will reflect the ranking of participants' submissions based on the 5/17 buildings training dataset.
+- In **Phase I**, the leaderboard will reflect the ranking of participants' submissions based on a 5/17 buildings training dataset.
 
-- In **Phase II**, the leaderboard will reflect the ranking of participants' submissions based on an unseen 5/17 buildings validation dataset as well as the seen 5/17 buildings dataset. The train and validation dataset scores will carry 40% and 60% weights respectively in the Phase 2 score.
+- In **Phase II**, the leaderboard will reflect the ranking of participants' submissions based on an unseen 5/17 buildings validation dataset as well as the seen 5/17 buildings dataset. The training and validation dataset scores will carry 40% and 60% weights respectively in the Phase 2 score.
 
-- In **Phase III**, participants' submissions will be evaluated on the 5/17 buildings training, 5/17 validation and remaining 7/17 test datasets. The train, validation and test dataset scores will carry 20%, 30% and 50% weights respectively in the Phase 3 score. The winner(s) of the competition will be decided using the leaderboard ranking in Phase III.
+- In **Phase III**, participants' submissions will be evaluated on the 5/17 buildings training, 5/17 validation and remaining 7/17 test datasets. The training, validation and test dataset scores will carry 20%, 30% and 50% weights respectively in the Phase 3 score. The winner(s) of the competition will be decided using the leaderboard ranking in Phase III.
 
 
 
 #  Getting Started
 1. **Sign up** to join the competition [on the AIcrowd website](https://www.aicrowd.com/challenges/neurips-2022-citylearn-challenge).
-2. **Install** the Citylearn Simulator [from this link](https://pypi.org/project/CityLearn/).
 3. **Fork** this starter kit repository. You can use [this link](https://gitlab.aicrowd.com/aicrowd/challenges/citylearn-challenge-2022/citylearn-2022-starter-kit/-/forks/new) to create a fork.
-4. **Clone** your forked repo and start developing your autonomous racing agent.
-5. **Develop** your controller agents following the template in [how to write your own agent](#how-to-write-your-own-agent) section.
+4. **Clone** your forked repo and start developing your agent.
+5. **Develop** your agent(s) following the template in [how to write your own agent](#how-to-write-your-own-agent) section.
+5. **Develop** your reward function following the template in [how to write your own reward function](#how-to-write-your-own-reward-function) section.
 6. [**Submit**](#how-to-make-a-submission) your trained models to [AIcrowd Gitlab](https://gitlab.aicrowd.com) for evaluation [(full instructions below)](#how-to-make-a-submission). The automated evaluation setup will evaluate the submissions on the citylearn simulator and report the metrics on the leaderboard of the competition.
 
 
@@ -69,6 +69,10 @@ Examples are provided in `agents/random_agent.py` and `agents/rbc_agent.py`.
 To make things compatible with [PettingZoo](https://www.pettingzoo.ml/), a reference wrapper is provided that provides observations for each building individually (referred by agent id).
 
 Add your agent code in a way such that the actions returned are conditioned on the `agent_id`. Note that different buildings can have different action spaces. `agents/orderenforcingwrapper.py` contains the actual code that will be called by the evaluator, if you want to bypass it, you will have to match the interfaces, but we recommend using the standard agent interface as shown in the examples.
+
+
+# How to write your own reward function?
+The reward function must be defined in `get_reward()` function in the [rewards.get_reward](rewards/get_reward.py) module. See [here](rewards/README.md) for instructions on how to define a custom reward function.
 
 # How to start participating?
 
@@ -93,6 +97,8 @@ You can add your SSH Keys to your GitLab account by going to your profile settin
     ```
 
 4. Write your own agent as described in [How to write your own agent](#how-to-write-your-own-agent) section.
+
+4. Write your own reward function as described in [How to write your own reward function](#how-to-write-your-own-reward-function) section.
 
 5. Test your agent locally using `python local_evaluation.py`
 
