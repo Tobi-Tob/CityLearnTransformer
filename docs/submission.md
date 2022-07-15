@@ -52,6 +52,10 @@ git push aicrowd master
 ```
 
 ```bash
+
+# Commit All your changes
+git commit -am "My commit message"
+
 # Create a tag for your submission and push
 git tag -am "submission-v0.1" submission-v0.1
 git push origin master
