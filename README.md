@@ -168,7 +168,7 @@ Participants are ranked in ascending order of $`\textrm{score}`$ as the goal of 
 
 In Phase 1, the training dataset score will carry 100% weight. By Phase 2, the training and validation dataset scores will carry 40% and 60% weights respectively. Finally in Phase 3, the training, validation and test dataset scores will carry 20%, 30% and 50% weights respectively .
 
-The winner of each [phase](#Competition_Phases) will be the participant with the least weighted sum of scores from all considered datasets for the phase. In the event that multiple participants have the same $`\textrm{score}`$ in any of the phases, the ties will be broken in ascending order of agent complexity which, we interpret to be the simulation runtime.
+The winner of each [phase](#competition-phases) will be the participant with the least weighted sum of scores from all considered datasets for the phase. In the event that multiple participants have the same $`\textrm{score}`$ in any of the phases, the ties will be broken in ascending order of agent complexity which, we interpret to be the simulation runtime.
 
 ### Time constraints
 TODO
