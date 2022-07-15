@@ -68,7 +68,7 @@ git push aicrowd submission-v0.1
 You now should be able to see the details of your submission at:
 `https://gitlab.aicrowd.com/<YOUR_AICROWD_USER_NAME>/citylearn-2022-starter-kit/issues`
 
-**NOTE**: Remember to update your username instead of `<YOUR_AICROWD_USER_NAME>` above link :wink:
+**NOTE**: Please remember to update your username instead of `<YOUR_AICROWD_USER_NAME>` in the above link :wink:
 
 After completing above steps, you should start seeing something like below to take shape in your Repository -> Issues page:
 ![](https://i.imgur.com/17U52oB.png)
