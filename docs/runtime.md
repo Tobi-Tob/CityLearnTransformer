@@ -25,4 +25,6 @@ These files are used to construct your **AIcrowd submission docker containers** 
 
 ----
 
+📚 A more detailed summary of the same is available here : [How to specify runtime environment for your submission](https://discourse.aicrowd.com/t/how-to-specify-runtime-environment-for-your-submission/2274)
+
 👋 In case you have any doubts or need help, you can reach out to us via Challenge [Discussions](https://www.aicrowd.com/challenges/learn-to-race-autonomous-racing-virtual-challenge/discussion) or [Discord](https://discord.gg/fNRrSvZkry).
