@@ -87,7 +87,7 @@ You can add your SSH Keys to your GitLab account by going to your profile settin
 2.  **Clone the repository**
 
     ```
-    git clone git@gitlab.aicrowd.com:<YOUR_AICROWD_USERNAME>/citylearn-2022-starter-kit.git
+    git clone git@gitlab.aicrowd.com:aicrowd/challenges/citylearn-challenge-2022/citylearn-2022-starter-kit.git
     ```
 
 3. **Install** competition specific dependencies!
