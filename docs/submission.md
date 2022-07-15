@@ -71,7 +71,7 @@ You now should be able to see the details of your submission at:
 **NOTE**: Remember to update your username instead of `<YOUR_AICROWD_USER_NAME>` above link :wink:
 
 After completing above steps, you should start seeing something like below to take shape in your Repository -> Issues page:
-![](https://i.imgur.com/6jzlIdx.png)
+![](https://i.imgur.com/17U52oB.png)
 
 ### Other helpful files
 
