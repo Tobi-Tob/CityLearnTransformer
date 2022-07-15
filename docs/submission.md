@@ -24,10 +24,10 @@ You will have to add your SSH Keys to your GitLab account by going to your profi
 You can run the following to make a submission.
 
 ```bash
-./utility/submit.sh <description>
+./submit.sh <description-phrase> # example: ./submit.sh submission-my-first-agent 
 ```
 
-`./utility/submit.sh` contains a few git commands that will push your code to AIcrowd GitLab.
+`./submit.sh` contains a few git commands that will push your code to AIcrowd GitLab.
 
 **Note:** In case you see an error message like `git: 'lfs' is not a git command. See 'git --help'.`, please make sure you have git LFS installed. You can install it using `git lfs install` or refer [Git LFS website](https://git-lfs.github.com/).
 
@@ -44,6 +44,14 @@ You can create a submission by making a _tag push_ to your repository on [https:
 **Any tag push (where the tag name begins with "submission-") to your private repository is considered as a submission**
 
 ```bash
+cd citylearn-2022-starter-kit
+
+# Add AIcrowd git remote endpoint
+git remote add aicrowd git@gitlab.aicrowd.com:<YOUR_AICROWD_USER_NAME>/citylearn-2022-starter-kit.git 
+git push aicrowd master
+```
+
+```bash
 # Create a tag for your submission and push
 git tag -am "submission-v0.1" submission-v0.1
 git push origin master
@@ -54,7 +62,7 @@ git push origin submission-v0.1
 ```
 
 You now should be able to see the details of your submission at:
-`https://gitlab.aicrowd.com/aicrowd/challenges/<YOUR_AICROWD_USER_NAME>/citylearn-2022-starter-kit/issues`
+`https://gitlab.aicrowd.com/<YOUR_AICROWD_USER_NAME>/citylearn-2022-starter-kit/issues`
 
 **NOTE**: Remember to update your username instead of `<YOUR_AICROWD_USER_NAME>` above link :wink:
 
