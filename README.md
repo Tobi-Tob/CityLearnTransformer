@@ -129,6 +129,9 @@ The different files and directories have following meaning:
     ├── rbc_agent.py               # Simple rule based agent
     ├── orderenforcingwrapper.py   # Pettingzoo compatibilty wrapper
     └── user_agent.py              # IMPORTANT: Add your agent name here
+└── rewards                 # Place your reward related code here
+    ├── get_reward.py               # Place your reward related code here
+    ├── user_reward.py              # Custom reward class (DO NOT EDIT!)
 ```
 
 Finally, **you must specify an AIcrowd submission JSON in `aicrowd.json` to be scored!** 
