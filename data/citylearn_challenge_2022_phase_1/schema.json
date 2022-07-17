@@ -181,7 +181,10 @@
       "update_per_time_step": 2
     }
   },
-  "reward_function": "rewards.user_reward.UserReward",
+  "reward_function": {
+    "type": "rewards.user_reward.UserReward",
+    "attributes": null
+  },
   "buildings": {
     "Building_1": {
       "include": true,
