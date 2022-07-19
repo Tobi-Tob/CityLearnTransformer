@@ -36,8 +36,7 @@ class OrderEnforcingAgent:
         return actions
     
     def raise_aicrowd_error(self, msg):
-        print(msg)
-        sys.exit(0)
+        raise NameError(msg)
 
     def compute_action(self, observation):
         """Get observation return action"""
