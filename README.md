@@ -171,7 +171,9 @@ In Phase 1, the training dataset score will carry 100% weight. By Phase 2, the t
 The winner of each [phase](#competition-phases) will be the participant with the least weighted sum of scores from all considered datasets for the phase. In the event that multiple participants have the same $`\textrm{score}`$ in any of the phases, the ties will be broken in ascending order of agent complexity which, we interpret to be the simulation runtime.
 
 ### Time constraints
-TODO
+
+For Phase I, our agent should complete 5 episodes in 60 minutes. Note that the number of episodes and time can change depending on the phase of the challenge. However we will try to keep the throughput requirement of your agent, so you need not worry about phase changes. We only measure the time taken by your agent.
+
 
 
 ## Local Evaluation
@@ -182,9 +184,9 @@ TODO
 🙏 You can share your solutions or any other baselines by contributing directly to this repository by opening merge request.
 
 - Add your implemntation as `agents/<your_agent>.py`.
+- Import it in `user_agent.py`
 - Test it out using `python local_evaluation.py`.
 - Add any documentation for your approach at top of your file.
-- Import it in `user_agent.py`
 - Create merge request! 🎉🎉🎉 
 
 ## Contributors
