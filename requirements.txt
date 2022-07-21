@@ -1,1 +1,1 @@
-git+https://github.com/intelligent-environments-lab/CityLearn.git@v1.2.0
+git+https://github.com/intelligent-environments-lab/CityLearn.git@v1.3.0
