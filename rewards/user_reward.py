@@ -18,4 +18,4 @@ class UserReward(RewardFunction):
         This function is called internally in the environment's :meth:`citylearn.CityLearnEnv.step` function.
         """
 
-        return get_reward(self.electricity_consumption, self.carbon_emission, self.electricity_price)
+        return get_reward(self.electricity_consumption, self.carbon_emission, self.electricity_price, list(range(self.agent_count)))

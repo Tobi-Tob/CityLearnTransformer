@@ -1,6 +1,6 @@
 from gym.spaces import Box
 from agents.user_agent import UserAgent
-import sys
+from rewards.user_reward import UserReward
 
 def dict_to_action_space(aspace_dict):
     return Box(
@@ -41,7 +41,21 @@ class OrderEnforcingAgent:
     def compute_action(self, observation):
         """Get observation return action"""
         assert self.num_buildings is not None
+
+        # calculate rewards
+        electricity_consumption_index = 23
+        carbon_emission_index = 19
+        electricity_pricing_index = 24
+        rewards = UserReward(
+            agent_count=len(observation),
+            electricity_consumption=[o[electricity_consumption_index] for o in observation],
+            carbon_emission=[o[carbon_emission_index]*o[electricity_consumption_index] for o in observation],
+            electricity_price=[o[electricity_pricing_index]*o[electricity_consumption_index] for o in observation]
+        ).calculate()
         actions = []
+        
         for agent_id in range(self.num_buildings):
+            reward = rewards[agent_id]
             actions.append(self.agent.compute_action(observation[agent_id], agent_id))
+        
         return actions
