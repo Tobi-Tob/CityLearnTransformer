@@ -10,6 +10,16 @@ This repository is the NeurIPS 2022 Citylearn Challenge **Submission template an
 *  **The procedure** for best practices and information on how we evaluate your agent, etc.
 *  **Starter code** for you to get started!
 
+## Citylearn Environment Version
+
+Some updates are expected to the environment during the warm up round. Please install the latest version being used for the competition mentioned below.
+
+**Current version (21st July onwards)**: https://github.com/intelligent-environments-lab/CityLearn/tree/v1.3.0
+
+**Previous versions**
+
+18th July - 21st July: https://github.com/intelligent-environments-lab/CityLearn/tree/v1.3.0
+
 # Table of Contents
 
 - [Competition Overview](#competition-overview)
