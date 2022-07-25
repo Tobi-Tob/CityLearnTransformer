@@ -51,6 +51,11 @@ def evaluate():
     episode_metrics = []
     try:
         while True:
+            
+            ### This is only a reference script provided to allow you 
+            ### to do local evaluation. The evaluator **DOES NOT** 
+            ### use this script for orchestrating the evaluations. 
+
             observations, _, done, _ = env.step(actions)
             if done:
                 episodes_completed += 1

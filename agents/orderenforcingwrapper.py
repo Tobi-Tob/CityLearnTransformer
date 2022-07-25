@@ -29,33 +29,39 @@ class OrderEnforcingAgent:
         obs = observation["observation"]
         self.num_buildings = len(obs)
 
-        actions = []
         for agent_id in range(self.num_buildings):
             action_space = self.action_space[agent_id]
-            actions.append(self.agent.register_reset(obs[agent_id], action_space, agent_id))
-        return actions
+            self.agent.set_action_space(agent_id, action_space)
+        
+        return self.compute_action(obs)
     
     def raise_aicrowd_error(self, msg):
         raise NameError(msg)
 
     def compute_action(self, observation):
-        """Get observation return action"""
-        assert self.num_buildings is not None
+        """
+        Inputs: 
+            observation - List of observations from the env
+        Returns:
+            actions - List of actions in the same order as the observations
 
-        # calculate rewards
-        electricity_consumption_index = 23
-        carbon_emission_index = 19
-        electricity_pricing_index = 24
-        rewards = UserReward(
-            agent_count=len(observation),
-            electricity_consumption=[o[electricity_consumption_index] for o in observation],
-            carbon_emission=[o[carbon_emission_index]*o[electricity_consumption_index] for o in observation],
-            electricity_price=[o[electricity_pricing_index]*o[electricity_consumption_index] for o in observation]
-        ).calculate()
+        You can change this function as needed
+        please make sure the actions are in same order as the observations
+
+        Reward preprocesing - You can use your custom reward function here
+        please specify your reward function in agents/user_agent.py
+
+        """
+        assert self.num_buildings is not None
+        rewards = UserReward(observation=observation).calculate()
+
         actions = []
         
         for agent_id in range(self.num_buildings):
-            reward = rewards[agent_id]
+            # reward = rewards[agent_id]
             actions.append(self.agent.compute_action(observation[agent_id], agent_id))
+
+        # If you want a single central agent setup, change this function as needed
+
         
         return actions

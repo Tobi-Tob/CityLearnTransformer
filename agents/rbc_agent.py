@@ -25,11 +25,9 @@ class BasicRBCAgent:
     """
     def __init__(self):
         self.action_space = {}
-    
-    def register_reset(self, observation, action_space, agent_id):
-        """Get the first observation after env.reset, return action"""
+
+    def set_action_space(self, agent_id, action_space):
         self.action_space[agent_id] = action_space
-        return rbc_policy(observation, action_space)
 
     def compute_action(self, observation, agent_id):
         """Get observation return action"""
