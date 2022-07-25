@@ -51,7 +51,7 @@ class OrderEnforcingAgent:
 
         """
         assert self.num_buildings is not None
-        rewards = UserReward(observation=observation).calculate()
+        rewards = UserReward(agent_count=len(observation),observation=observation).calculate()
 
         actions = []
         

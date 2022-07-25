@@ -7,18 +7,24 @@ from citylearn.reward_function import RewardFunction
 from rewards.get_reward import get_reward
 
 class UserReward(RewardFunction):
-    def __init__(self, 
-                 observation: List[dict]):
+    def __init__(self, agent_count,
+                 observation: List[dict] = None, 
+                 **kwargs):
 
         # calculate rewards
         electricity_consumption_index = 23
         carbon_emission_index = 19
         electricity_pricing_index = 24
+        agent_count=agent_count
 
-        agent_count=len(observation)
-        electricity_consumption=[o[electricity_consumption_index] for o in observation]
-        carbon_emission=[o[carbon_emission_index]*o[electricity_consumption_index] for o in observation]
-        electricity_price=[o[electricity_pricing_index]*o[electricity_consumption_index] for o in observation]
+        if observation is None:
+            electricity_consumption = None
+            carbon_emission = None
+            electricity_price = None
+        else:
+            electricity_consumption=[o[electricity_consumption_index] for o in observation]
+            carbon_emission=[o[carbon_emission_index]*o[electricity_consumption_index] for o in observation]
+            electricity_price=[o[electricity_pricing_index]*o[electricity_consumption_index] for o in observation]
 
         super().__init__(agent_count=agent_count, 
                          electricity_consumption=electricity_consumption, 
