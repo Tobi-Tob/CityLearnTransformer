@@ -12,8 +12,6 @@ def dict_to_action_space(aspace_dict):
 
 class OrderEnforcingAgent:
     """
-    TRY NOT TO CHANGE THIS
-    
     Emulates order enforcing wrapper in Pettingzoo for easy integration
     Calls each agent step with agent in a loop and returns the action
     """
