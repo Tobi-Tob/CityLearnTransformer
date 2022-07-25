@@ -26,8 +26,12 @@ def action_space_to_dict(aspace):
 def env_reset(env):
     observations = env.reset()
     action_space = env.action_space
+    observation_space = env.observation_space
+    building_info = env.get_building_information()
     action_space_dicts = [action_space_to_dict(asp) for asp in action_space]
     obs_dict = {"action_space": action_space_dicts,
+                "observation_space": observation_space,
+                "building_info": building_info,
                 "observation": observations }
     return obs_dict
 
