@@ -1,6 +1,5 @@
 {
   "challenge_id" : "neurips-2022-citylearn-challenge",
-  "grader_id": "neurips-2022-citylearn-challenge",
   "authors" : ["adrien_forbu"],
   "description" : "NeurIPS 2022: CityLearn Challenge Agent",
   "debug" : false
