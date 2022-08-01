@@ -7,12 +7,25 @@ def rbc_policy(observation, action_space):
     hour = observation[2] # Hour index is 2 for all observations
     
     action = 0.0 # Default value
-    if 9 <= hour <= 21:
-        # Daytime: release stored energy
-        action = -0.08
-    elif (1 <= hour <= 8) or (22 <= hour <= 24):
-        # Early nightime: store DHW and/or cooling energy
-        action = 0.091
+
+    multiplier = 0.6
+    # Daytime: release stored energy  2*0.08 + 0.1*7 + 0.09
+
+    if hour >= 7 and hour <= 11:
+        action = -0.05 * multiplier 
+    elif hour >= 12 and hour <= 15:
+        action = -0.05 * multiplier
+    elif hour >= 16 and hour <= 18:
+        action = -0.11 * multiplier
+    elif hour >= 19 and hour <= 22:
+        action = -0.06 * multiplier 
+    
+    # Early nightime: store DHW and/or cooling energy
+    if hour >= 23 and hour <= 24:
+        action = 0.085 * multiplier 
+    elif hour >= 1 and hour <= 6:
+        action = 0.1383 * multiplier 
+
 
     action = np.array([action], dtype=action_space.dtype)
     assert action_space.contains(action)
