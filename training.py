@@ -4,11 +4,12 @@ We train a policy using the CityLearn environment to simulate the energy consump
 also we train the model using a genetic algorithm.
 """
 
+from re import S
 from stable_baselines3.ppo import MlpPolicy
 from stable_baselines3 import PPO
 import supersuit as ss
 import gym
-import gym.spaces
+
 
 from citylearn.citylearn import CityLearnEnv
 import numpy as np
@@ -19,6 +20,14 @@ class Constants:
 
 # create env from citylearn
 env = CityLearnEnv(schema=Constants.schema_path)
+
+def action_space_to_dict(aspace):
+    """ Only for box space """
+    return { "high": aspace.high,
+             "low": aspace.low,
+             "shape": aspace.shape,
+             "dtype": str(aspace.dtype)
+    }
 
 def env_reset(env):
     observations = env.reset()
@@ -43,15 +52,20 @@ class EnvCityGym(gym.Env):
         self.env = env
 
         # get the number of buildings
-        self.num_buildings = len(env.get_building_information())
+        self.num_buildings = len(env.action_space)
+        print("num_buildings: ", self.num_buildings)
 
-        self.action_space = spaces.Box(low=np.array([-0.2]* self.num_buildings), high=np.array([0.2]* self.num_buildings), dtype=np.float32)
+        self.action_space = gym.spaces.Box(low=np.array([-0.2]), high=np.array([0.2]), dtype=np.float32)
 
-        self.observation_space = spaces.MultiDiscrete([np.arange(0, 24), np.arange(0, 12)])
+        self.observation_space = gym.spaces.MultiDiscrete(np.array([25, 13]))
 
     def reset(self):
         obs_dict = env_reset(self.env)
-        return self.env.reset()
+        obs = self.env.reset()
+        observation = [obs[0][2], obs[0][0]]
+
+
+        return observation
 
     def step(self, action):
         """
@@ -63,18 +77,18 @@ class EnvCityGym(gym.Env):
         obs, reward, done, info = self.env.step(action)
 
         # we retrieve the building information with the hour and month from obs dict
-        observation = np.array([obs[0][2], obs[0][0]])
-
-        metrics_t = env.evaluate()
-        metrics = {"price_cost": metrics_t[0], "emmision_cost": metrics_t[1]}
-
-        reward = metrics["price_cost"] + metrics["emmision_cost"]
-
+        observation = [obs[0][2], obs[0][0]]
 
         return observation, reward, done, info
         
     def render(self, mode='human'):
         return self.env.render(mode)
+
+# training with PPO and stable baselines
+model = PPO(MlpPolicy, env=EnvCityGym(env), verbose=1)
+model.learn(total_timesteps=1000000)
+model.save("ppo_citylearn")
+
 
 
 
