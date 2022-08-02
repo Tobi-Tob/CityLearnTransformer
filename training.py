@@ -64,7 +64,6 @@ class EnvCityGym(gym.Env):
         obs = self.env.reset()
         observation = [obs[0][2], obs[0][0]]
 
-
         return observation
 
     def step(self, action):
@@ -76,6 +75,9 @@ class EnvCityGym(gym.Env):
         action = action.repeat(self.num_buildings, axis=0)
         obs, reward, done, info = self.env.step(action)
 
+        reward = sum(reward)
+
+        
         # we retrieve the building information with the hour and month from obs dict
         observation = [obs[0][2], obs[0][0]]
 
