@@ -1,8 +1,7 @@
-git+https://github.com/intelligent-environments-lab/CityLearn.git@v1.3.6
-sklearn==1.0.2
+scikit-learn==1.0.2
 xgboost==1.6.2
 joblib
-
+git+https://github.com/intelligent-environments-lab/CityLearn.git@v1.3.6
 
 
 
