@@ -85,7 +85,7 @@ class UserAgent:
         self.lookback_info = 24
 
         # we list the models available in the folder models/ repository
-        models = os.listdir("./models/")
+        models = os.listdir("/home/aicrowd/models/")
 
         # we load all the models
         for model in models:
@@ -93,7 +93,7 @@ class UserAgent:
             # change the name of the model for the key in the dictionary
             key = model.split(".")[0]
 
-            self.models[key] = pickle.load(open("models/" + model, 'rb'))
+            self.models[key] = pickle.load(open("/home/aicrowd/models/" + model, 'rb'))
 
     def set_action_space(self, agent_id, action_space):
         self.action_space[agent_id] = action_space
