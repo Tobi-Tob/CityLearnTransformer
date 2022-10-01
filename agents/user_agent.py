@@ -131,6 +131,11 @@ class UserAgent:
 
             prediction_t[var] = self.models[var].predict(input_data.reshape((1, -1)))[0]
 
+            # custom correction for the hour
+            if var == "hour":
+                # we add 1h to the data hour last
+                prediction_t[var] = (data[var][-1] + 1) % 24
+
         # we get the model prediction
         return prediction_t
 
