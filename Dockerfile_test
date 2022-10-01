@@ -14,12 +14,12 @@ RUN pip install numpy
 RUN pip install pandas
 RUN pip install seaborn
 RUN pip install scikit-learn
-RUN pip install xgboost
+RUN pip install xgboost==1.4.2
 
 RUN pip install git+https://github.com/intelligent-environments-lab/CityLearn.git@v1.3.5
 
 RUN git config --global --add safe.directory /app
 RUN git config --global --add safe.directory '*'
-RUN mkdir /home/data
+RUN mkdir /home/aicrowd
 
 WORKDIR /home
