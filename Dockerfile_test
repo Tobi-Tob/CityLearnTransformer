@@ -1,21 +1,25 @@
-FROM anibali/pytorch:latest
+FROM python:3.9.7-slim-buster
+
 USER root
 
-RUN apt-get update
-RUN apt-get install gcc -y
-RUN pip install tinyscaler
+RUN apt update -y
+RUN apt install gcc -y
+RUN apt install git -y 
+
+RUN apt-get -y install \
+	build-essential 
+
+RUN pip install matplotlib
 RUN pip install numpy
-RUN pip install SuperSuit
-RUN pip install gym
-RUN pip install PettingZoo
-RUN pip install stable-baselines3
+RUN pip install pandas
+RUN pip install seaborn
+RUN pip install scikit-learn
+RUN pip install xgboost
 
-RUN pip install git+https://github.com/intelligent-environments-lab/CityLearn.git@v1.3.3
-
-ADD . /app/
+RUN pip install git+https://github.com/intelligent-environments-lab/CityLearn.git@v1.3.5
 
 RUN git config --global --add safe.directory /app
 RUN git config --global --add safe.directory '*'
+RUN mkdir /home/data
 
-WORKDIR /app
-RUN python /app/training.py
+WORKDIR /home
