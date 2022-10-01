@@ -1,0 +1,8 @@
+# ignore all data
+data/
+img/
+docs/
+*.log
+*.pyc
+*.pyo
+*.pyd
