@@ -134,7 +134,7 @@ class UserAgent:
             # custom correction for the hour
             if var == "hour":
                 # we add 1h to the data hour last
-                prediction_t[var] = (data[var][-1] + 1) % 24
+                prediction_t[var] = (data[var][0, -1] + 1) % 24
 
         # we get the model prediction
         return prediction_t
