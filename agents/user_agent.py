@@ -50,7 +50,7 @@ int_to_str_mapping = {v: k for k, v in str_to_int_mapping.items()}
 # UserAgent = RandomAgent
 # UserAgent = BasicRBCAgent
 
-def simple_rule_optim(observation_t):
+def simple_rule_optim(observation_t, current_soc):
     """
     This is a simple rule to optimize the energy consumption
 
@@ -63,6 +63,10 @@ def simple_rule_optim(observation_t):
 
     if observation_t['electricity_consumption_crude'] < 0:
         action = action - observation_t['electricity_consumption_crude']/6.4
+    
+    # we complete our stock
+    if observation_t['hour'] == 15:
+        action = max(1 - current_soc, 0.)
 
     if (observation_t['hour'] >= 16 or observation_t['hour'] <= 7) and observation_t['electricity_consumption_crude'] > 0:
               action = action - observation_t['electricity_consumption_crude']/6.4
@@ -135,6 +139,7 @@ class UserAgent:
             if var == "hour":
                 # we add 1h to the data hour last
                 prediction_t[var] = (data[var][0, -1] + 1) % 24
+        
 
         # we get the model prediction
         return prediction_t
@@ -158,6 +163,8 @@ class UserAgent:
         # we augment the observation with the crude electricity consumption and the index pricing
         observation = self.augment_observations(observation, agent_id)
 
+        current_soc = observation['electrical_storage_soc']
+
         # add observation to the history
         self.adding_observation(observation, agent_id)
 
@@ -165,6 +172,6 @@ class UserAgent:
         prediction_t = self.get_model_prediction(agent_id)
 
         # now we can compute the action with rule based behaviour
-        action = simple_rule_optim(prediction_t)
+        action = simple_rule_optim(prediction_t, current_soc)
 
         return [action]
