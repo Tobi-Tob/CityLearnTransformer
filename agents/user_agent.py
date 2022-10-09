@@ -18,11 +18,6 @@ import torch
 import torch.nn as nn
 import pytorch_lightning as pl
 
-import pickle
-
-import wandb
-from pytorch_lightning.loggers import WandbLogger
-
 ###################################################################
 #####                Specify your agent here                  #####
 ###################################################################
