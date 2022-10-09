@@ -399,4 +399,4 @@ class UserAgent:
 
             print(action)
 
-            return [action]
+            return [float(action)]
