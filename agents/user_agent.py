@@ -293,7 +293,7 @@ def optimize_action_imagination(prediction_futur, current_soc):
         # clip actions_all between -1 and 1
         actions_all = jnp.clip(actions_all, -1, 1)
 
-        print("loss: ", loss)
+        #print("loss: ", loss)
 
     return actions_all[0]
   
@@ -396,5 +396,7 @@ class UserAgent:
 
             # we compute the action
             action = optimize_action_imagination(df_pred, current_soc)
+
+            print(action)
 
             return [action]
