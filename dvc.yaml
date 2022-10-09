@@ -1,0 +1,9 @@
+stages:
+  train:
+    cmd: python training_forecast_model_v2.py
+    deps:
+    - training_forecast_model_v2.py
+    outs:
+    - models/model_world.pt
+    plots:
+    - results_worldmodel/

@@ -1,0 +1,16 @@
+schema: '2.0'
+stages:
+  train:
+    cmd: python training_forecast_model_v2.py
+    deps:
+    - path: training_forecast_model_v2.py
+      md5: e6a1e557467349dc36a455bd6d3eb9b6
+      size: 14739
+    outs:
+    - path: models/model_world.pt
+      md5: 3d1d3d904d86710cd8c84223d7e8ec7e
+      size: 245295
+    - path: results_worldmodel/
+      md5: fa0fa25e05819acd888b68151a56f754.dir
+      size: 10969666
+      nfiles: 6
