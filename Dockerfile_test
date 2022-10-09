@@ -13,9 +13,27 @@ RUN pip install matplotlib
 RUN pip install numpy
 RUN pip install pandas
 RUN pip install seaborn
-RUN pip install scikit-learn
+RUN pip install scikit-learn==1.0.2
 RUN pip install xgboost==1.6.2
-RUN pip install git+https://github.com/intelligent-environments-lab/CityLearn.git@v1.3.5
+RUN pip install joblib
+RUN pip install git+https://github.com/intelligent-environments-lab/CityLearn.git@v1.3.6
+
+# install jax cpu only
+RUN pip install --upgrade pip
+RUN pip install --upgrade "jax[cpu]"
+RUN pip install optax
+
+# install torch (cpu) and pytorch lightning
+RUN pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cpu
+RUN pip install pytorch-lightning
+RUN pip install einops
+RUN pip install wandb
+
+# install pyarrow
+RUN pip install pyarrow
+
+# install dvc
+RUN pip install dvc
 
 RUN git config --global --add safe.directory /app
 RUN git config --global --add safe.directory '*'

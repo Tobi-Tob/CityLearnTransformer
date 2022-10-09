@@ -6,3 +6,5 @@ docs/
 *.pyc
 *.pyo
 *.pyd
+
+wandb/
