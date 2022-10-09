@@ -149,3 +149,4 @@ cython_debug/
 
 *.tar.gz
 *.serialized
+/results_worldmodel
