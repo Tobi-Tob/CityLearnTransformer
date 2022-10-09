@@ -265,12 +265,15 @@ def full_simulation(actions_all, data, episode_size, episode_start, soc_init=0.)
 
     return rewards_tot
 
-def optimize_action_imagination(prediction_futur, current_soc):
+def optimize_action_imagination(prediction_futur, current_soc, action_init=None):
 
     lookforward = 20
-    nb_iter = 10
+    nb_iter = 5
 
-    actions_all = jnp.zeros((lookforward,))
+    if action_init is None:
+        actions_all = jnp.zeros((lookforward,))
+    else:
+        actions_all = action_init
 
     # we create the optimizer
     optimizer = optax.adam(learning_rate=0.05)
@@ -293,9 +296,9 @@ def optimize_action_imagination(prediction_futur, current_soc):
         # clip actions_all between -1 and 1
         actions_all = jnp.clip(actions_all, -1, 1)
 
-        #print("loss: ", loss)
+        print("loss: ", loss)
 
-    return actions_all[0]
+    return actions_all
   
 
 features_to_forecast = ['non_shiftable_load', 'solar_generation', 'electricity_pricing', 'carbon_intensity',
@@ -327,11 +330,19 @@ class UserAgent:
         with open('models/mean_std.pkl', 'rb') as f:
             self.mean, self.std = pickle.load(f)
 
+
+        # save previous action plan for each building
+        self.previous_action = {}
+
+
     def set_action_space(self, agent_id, action_space):
         self.action_space[agent_id] = action_space
 
         # we init a history of information specific to the agent
         self.history[agent_id] = {var : deque(maxlen=lookback) for var in self.features_to_forecast}
+
+        # we init the previous action
+        self.previous_action[agent_id] = jnp.array([0. for i in range(lookforward)])
 
     def adding_observation(self, observation, agent_id):
         """Get observation return action"""
@@ -394,9 +405,22 @@ class UserAgent:
             # we get the prediction
             df_pred = self.get_model_prediction(agent_id)
 
+            # we create the action init using the previous action
+            # we retrieve the first action of the previous action
+            # and append a 0 to the end of the array
+            action_init = jnp.append(self.previous_action[agent_id][1:], 0)
+
+            # we also divide the action_init by 2
+            action_init = action_init / 2
+
             # we compute the action
-            action = optimize_action_imagination(df_pred, current_soc)
+            action = optimize_action_imagination(df_pred, current_soc, action_init)
 
-            print(action)
+            action_final = action[0]
 
-            return [float(action)]
+            # we save the action
+            self.previous_action[agent_id] = action
+
+            print("action_final: ", action_final)
+
+            return [float(action_final)]
