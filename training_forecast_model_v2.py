@@ -478,6 +478,10 @@ def train_worldmodel(path_dataset):
     mean = data[features_to_forecast].mean()
     std = data[features_to_forecast].std()
 
+    # save to pickle
+    with open("models/mean_std.pkl", "wb") as f:
+        pickle.dump([mean, std], f)
+
     data[features_to_forecast] = (data[features_to_forecast] - mean) / std
 
     # we define the dataset fro validation and training

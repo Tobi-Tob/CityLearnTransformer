@@ -18,6 +18,8 @@ import torch
 import torch.nn as nn
 import pytorch_lightning as pl
 
+import time
+
 ###################################################################
 #####                Specify your agent here                  #####
 ###################################################################
@@ -59,72 +61,29 @@ str_to_int_mapping = {
 int_to_str_mapping = {v: k for k, v in str_to_int_mapping.items()}
 
 
+features_to_forecast = ['non_shiftable_load', 'solar_generation', 'electricity_pricing', 'carbon_intensity',
+                                                             'hour', 'month']
 
-def jax_gym_simulation(env_variable, electrical_soc, action, params):
-    """
-    this is a simple jax function that take env variable, electrical soc and action
-    and return a reward and a futur electrical soc
-    
-    Parameters:
-    -----------
-    env_variable: dict
-        the env variable that we want to use to predict the futur reward
-    electrical_soc: float
-        the electrical soc of the building
-    action: float
-        the action that we want to apply to the building
-    
-    Returns:
-    --------
-    reward: float
-        the reward that we get from the action
-    electrical_soc: float
-        the futur electrical soc of the building
-    """
+hidden_feature = 64
+lookback = 5
+lookfuture = 20
 
-    # we make a correction on the action demand 
-    action = jnp.clip(action, -1, 1)
 
-    # also for the action we cannot demand more than the space left in the battery (electrical_soc)
-    # and we cannot spend more electrical energy than the one that we have
-    action = jnp.clip(action, -electrical_soc*0.9, (1 - electrical_soc)/0.9)
-
-    assert electrical_soc >= 0, "electrical_soc must be positive"
-    assert electrical_soc <= 1, "electrical_soc must be less than 1"
-
-    # first we compute the full demand for electrical power
-    full_demand = env_variable['non_shiftable_load'] - env_variable['solar_generation'] + action*params['soc_max']
-
-    # the full demand have to be fullfilled by the electrical grid
-    reward_electricity_price = jnp.clip(full_demand*env_variable['electricity_pricing'], 0, 1000000)
-
-    # we compute the reward for the carbon intensity
-    reward_carbon_intensity = jnp.clip(full_demand*env_variable['carbon_intensity'], 0, 1000000)
-
-    # we compute the new electrical soc value
-    # now we can compute the efficiency
-    eff =  0.9110#get_efficiency(action*params['soc_max'])
-
-    #print(f"eff: {eff}")
-
-    # we compute the new electrical soc value
-    if action >= 0:
-      electrical_soc_new = min(electrical_soc + (action*eff), 1)
-    else:
-      electrical_soc_new = max(electrical_soc + (action/eff), 0)
-
-    return reward_electricity_price + reward_carbon_intensity, electrical_soc_new
+non_shiftable_load_idx = features_to_forecast.index("non_shiftable_load")
+solar_generation_idx = features_to_forecast.index("solar_generation")
+electricity_pricing_idx = features_to_forecast.index("electricity_pricing")
+carbon_intensity_idx = features_to_forecast.index("carbon_intensity") 
 
 # we train the model with pytorch RNN or LSTM
 # we define the model
-class ModelCityLearn(pl.LightningModule):
+class ModelCityLearn(nn.Module):
     """
     A 2 layers model with 128 hidden units in each layer
     At each layers we have a LSTM layer
     The last layer is a linear layer
 
     """
-    def __init__(self, input_size, hidden_size, output_size):
+    def __init__(self, input_size, hidden_size, output_size, lookback, lookfuture):
         super(ModelCityLearn, self).__init__()
         self.hidden_size = hidden_size
 
@@ -135,8 +94,14 @@ class ModelCityLearn(pl.LightningModule):
         # loss function definition
         self.loss = nn.MSELoss()
 
-    def forward(self, input, hidden=None):
-        # reshape input (B, L, C) -> (B, C, L)
+        self.lookback = lookback
+        self.lookfuture = lookfuture
+
+    def forward(self, input):
+        
+        # we complete the input with 0 values (lookfuture)
+        input = torch.cat((input, torch.zeros(input.shape[0], self.lookfuture-1, input.shape[2])), dim = 1)
+
         output, _ = self.lstm1(input)
 
         # relu activation
@@ -148,21 +113,136 @@ class ModelCityLearn(pl.LightningModule):
 
         output = self.linear(output)
 
-        # we take the last value of the sequence
-        output = output[:, -1, :]
+        return output[:, -(self.lookfuture):, :]
+
+
+class ModelAfterPrediction(nn.Module):
+
+    def __init__(self, input_size, hidden_size, output_size=1):
+        super(ModelAfterPrediction, self).__init__()
+        self.hidden_size = hidden_size
+
+        # first layer is a BiLSTM layer
+        self.lstm1 = nn.LSTM(input_size + 1, hidden_size, batch_first = True, bidirectional = True)
+
+        # second layer is a linear layer
+        self.linear = nn.Linear(hidden_size*2, output_size)
+
+    def forward(self, input, storage_random):
+        # TODO we should add a storage_random to store the random values
+
+        # storage_random is (B,) we should transform it into (B, lookfuture, 1)
+        storage_random = storage_random.unsqueeze(1).unsqueeze(2).repeat(1, input.shape[1], 1)
+
+        # we concatenate the input with the random values
+        input = torch.cat((input, storage_random), dim = 2)
+
+        output, _ = self.lstm1(input)
+
+        # relu activation
+        output = nn.functional.relu(output)
+
+        output = self.linear(output)
+
+        # clip output to get a result between -1 and 1
+        output = torch.clamp(output, -1, 1)
 
         return output
 
+class ModelCityLearnOptim(pl.LightningModule):
+    """
+    In this model we will learn to optimize the action with a learn model
+    And also using reward hacking.
+
+    The idea to to forecast the futur state from the past (the past is lookback param and the future is lookfuture param)
+
+    We train the world model directly using state loss
+    We train the action model using the reward loss
+
+    """
+    def __init__(self, input_size, hidden_size, output_size, lookback = 5, lookforward = 20, mean = 0, std = 1):
+        super().__init__()
+
+        # already trained learn model
+        self.world_model = ModelCityLearn(input_size, hidden_size, output_size, lookback, lookforward)
+
+        # we define the model that we want to train
+        self.action_model = ModelAfterPrediction(input_size, hidden_size, output_size=1)
+
+        self.lookback = lookback
+        self.lookforward = lookforward
+
+        # mean and std to properly compute the reward
+        self.mean = mean
+        self.std = std
+
+        self.loss_env = nn.MSELoss()
+
+    def forward(self, x, storage):
+        # apply autoregressive model
+        futur_state = self.world_model(x)
+
+        # we predict the action
+        action = self.action_model(futur_state.detach(), storage)
+
+        return action, futur_state
+
     def training_step(self, batch, batch_idx):
-        # REQUIRED
+
         x, y = batch
-        y_hat = self(x.float())
-        loss = self.loss(y_hat, y.float())
 
-        # logs train_loss
-        self.log('train_loss', loss)
+        # here we should generate a random storage value
+        storage_random = torch.rand((x.shape[0],))
 
-        return loss
+        # we predict the action
+        action, futur_state = self(x.float(), storage_random)
+
+        # we compute the loss
+        loss_env = self.loss_env(y.float(), futur_state)
+
+        # loss for the first step and the 5th step
+        loss_env_1 = self.loss_env(y[:, 0, :], futur_state[:, 0, :])
+        loss_env_5 = self.loss_env(y[:, 4, :], futur_state[:, 4, :])
+
+        # we compute the reward
+        loss_reward = self.loss_reward(action, futur_state.detach(), storage_random)
+        self.log('train_loss_reward', loss_reward)
+
+        # we log the two reward
+        self.log('train_loss_env', loss_env)
+        self.log('train_loss_env_1', loss_env_1)
+        self.log('train_loss_env_5', loss_env_5)
+
+        return loss_env + loss_reward
+
+    def validation_step(self, batch, batch_idx):
+
+        x, y = batch
+
+        # here we should generate a random storage value
+        storage_random = torch.rand((x.shape[0],))
+
+        # we predict the action
+        action, futur_state = self(x.float(), storage_random)
+
+        # we compute the loss
+        loss_env = self.loss_env(y.float(), futur_state)
+
+        # loss for the first step and the 5th step
+        loss_env_1 = self.loss_env(y[:, 0, :], futur_state[:, 0, :])
+        loss_env_5 = self.loss_env(y[:, 4, :], futur_state[:, 4, :])
+
+        # we compute the reward
+        loss_reward = self.loss_reward(action, futur_state.detach(), storage_random)
+
+        self.log('val_loss_reward', loss_reward)
+
+        # we log the two reward        
+        self.log('val_loss_env', loss_env)
+        self.log('val_loss_env_1', loss_env_1)
+        self.log('val_loss_env_5', loss_env_5)
+
+        return loss_env + loss_reward
 
     def configure_optimizers(self):
         # REQUIRED
@@ -170,143 +250,65 @@ class ModelCityLearn(pl.LightningModule):
         # (LBFGS it is automatically supported, no need for closure function)
         return torch.optim.Adam(self.parameters(), lr=1e-3)
 
-    def validation_step(self, batch, batch_idx):
+    def loss_reward(self, action, futur_state, storage_random):
 
-        x, y = batch
-        y_hat = self(x.float())
-        loss = self.loss(y_hat, y.float())
+        # we initiate the storage with a random value between -1 and 1 for every sample
+        # get batch size
+        storage = storage_random
 
-        # logs val_loss
-        self.log('val_loss', loss)
+        # init the reward array of shape (batch_size, 1)
+        reward_tot = torch.zeros(action.shape[0],)
 
-        return loss
+        # we denormalize the futur state using the mean and std of the training set
+        std_torch = torch.tensor(self.std).float().unsqueeze(0).unsqueeze(0)
+        mean_torch = torch.tensor(self.mean).float().unsqueeze(0).unsqueeze(0)
 
-# we define the dataset
-class DatasetCityLearn(torch.utils.data.Dataset):
+        futur_state = futur_state * std_torch + mean_torch
 
-    def __init__(self, data, lookback, features_to_forecast):
-        self.data = data
-        self.lookback = lookback
-        self.features_to_forecast = features_to_forecast
+        # we compute the reward
+        for i in range(self.lookforward):
+            # we compute the reward
 
-    def __len__(self):
-        return len(self.data) - self.lookback
+            reward, storage = self.simulation_one_step(futur_state[:, i, :], action[:, i, 0], storage)
 
-    def __getitem__(self, idx):
-        # we get the data
-        x = self.data[self.features_to_forecast].iloc[idx:(idx + self.lookback)].values
-        y = self.data[self.features_to_forecast].iloc[idx + self.lookback].values
-        return x, y
+            reward_tot = reward_tot + reward
 
-def autoregressive_model(model, x, horizon=20, lookback_official=5):
-    """
-    This function is used to make a prediction on the autoregressive model
-    
-    Args:
-        model (torch.nn.Module): the model
-        x (torch.Tensor): the input (B, L, C) where B is the batch size, L is the lookback and C is the number of features
-        horizon (int): the horizon of the prediction
-    """
-    # we get the shape of the input
-    batch_size, lookback, n_features = x.shape
+        return torch.mean(reward_tot)
 
-    # if lookback is not equal to the lookback of the model then we return the last x values
-    if lookback != lookback_official:
+    def simulation_one_step(self, futur_state, action, storage):
 
-        return x[:, -1, :].detach().numpy()
-    else:
+        # we clip the action to get a value between -1 and 1
+        action = torch.clamp(action, -1, 1)
 
-        prediction_future = []
+        # also for the action we cannot demand more than the space left in the battery (electrical_soc)
+        # and we cannot spend more electrical energy than the one that we have
+        action = torch.clamp(action, -storage*0.9, (1 - storage)/0.9)
 
-        for i in range(horizon):
-            y_hat = model(x.float())
+        assert torch.all(storage >= 0), "electrical_soc must be positive"
+        assert torch.all(storage <= 1), "electrical_soc must be less than 1"
 
-            prediction_future.append(y_hat)
+        # first we compute the full demand for electrical power
+        full_demand = futur_state[:, non_shiftable_load_idx] - futur_state[:, solar_generation_idx] + action*6.4
 
-            # we add the prediction to the input
-            x = torch.cat([x, y_hat.unsqueeze(1)], dim=1)
-            x = x[:, 1:, :]
+        # the full demand have to be fullfilled by the electrical grid
+        reward_electricity_price = full_demand*futur_state[:, electricity_pricing_idx]
+        reward_electricity_price = torch.clamp(reward_electricity_price, 0, 10000000)
 
-        pred_futur = torch.cat(prediction_future, dim=0)
+        # we compute the reward for the carbon intensity
+        reward_carbon_intensity = full_demand*futur_state[:, carbon_intensity_idx]
+        reward_carbon_intensity = torch.clamp(reward_carbon_intensity, 0, 10000000)
 
-        return pred_futur.detach().numpy()
+        # we compute the new electrical soc value
+        # now we can compute the efficiency
+        eff =  0.9110
+
+        # we compute the new electrical soc value
+        electrical_soc_new = torch.where(action >= 0, storage + action*eff, storage + action/eff)
+        electrical_soc_new = torch.clamp(electrical_soc_new, 0, 1)
+
+        return reward_electricity_price + reward_carbon_intensity, electrical_soc_new
 
 
-def full_simulation(actions_all, data, episode_size, episode_start, soc_init=0.):
-    """
-    This is a full simulation (whole year) of the jax_gym_simulation function
-    """
-
-    # we create the params
-    params = {'soc_max': 6.4, 'nominal_power' : 5., 'soc_nominal' : 5./6.4}
-
-    # we create the initial electrical soc
-    electrical_soc = soc_init
-
-    # we create the reward array
-    rewards_tot = 0
-
-    # we loop over the data
-    for i in range(episode_start, episode_start + episode_size):
-
-        # we get the env variable
-        env_variable = data.iloc[i].to_dict()
-
-        # we get the action
-        actions = actions_all[i]
-
-        # we compute the reward and the futur electrical soc
-        reward, electrical_soc = jax_gym_simulation(env_variable, electrical_soc, actions, params)
-
-        # we append the reward
-        rewards_tot += reward
-
-    #print("rewards_tot: ", rewards_tot)
-
-    return rewards_tot
-
-def optimize_action_imagination(prediction_futur, current_soc, action_init=None):
-
-    lookforward = 20
-    nb_iter = 5
-
-    if action_init is None:
-        actions_all = jnp.zeros((lookforward,))
-    else:
-        actions_all = action_init
-
-    # we create the optimizer
-    optimizer = optax.adam(learning_rate=0.05)
-
-    # we create the initial state of the optimizer
-    state = optimizer.init(actions_all)
-
-    for i in range(nb_iter):
-
-
-        # we compute the loss and gradient (with respect to the actions)
-        loss, grad = jax.value_and_grad(full_simulation)(actions_all, prediction_futur, lookforward, 0, soc_init=current_soc)
-
-        # we update the state
-        updates, state = optimizer.update(grad, state)
-
-        # we update the actions
-        actions_all = optax.apply_updates(actions_all, updates)
-
-        # clip actions_all between -1 and 1
-        actions_all = jnp.clip(actions_all, -1, 1)
-
-        print("loss: ", loss)
-
-    return actions_all
-  
-
-features_to_forecast = ['non_shiftable_load', 'solar_generation', 'electricity_pricing', 'carbon_intensity',
-                                                             'hour', 'month']
-
-hidden_feature = 64
-lookback = 5
-lookforward = 20
 
 class UserAgent:
     def __init__(self):
@@ -318,21 +320,16 @@ class UserAgent:
 
         self.features_to_forecast = features_to_forecast
 
-        # here we can load the model
-        self.model = ModelCityLearn(len(features_to_forecast), hidden_feature, len(features_to_forecast))
-
-        # we load the model from .pt file
-        self.model.load_state_dict(torch.load('models/model_rnn.pt'))
-
-        self.model.eval()
-
         # we load the mean and std
         with open('models/mean_std.pkl', 'rb') as f:
             self.mean, self.std = pickle.load(f)
 
+        # we define the model
+        self.model = ModelCityLearnOptim(len(features_to_forecast), hidden_feature, len(features_to_forecast),
+                                                             lookback, lookfuture, self.mean, self.std)
 
-        # save previous action plan for each building
-        self.previous_action = {}
+        # load model from models_checkpoint/model_world.pt
+        self.model.load_state_dict(torch.load("models_checkpoint/model_world.pt"))
 
 
     def set_action_space(self, agent_id, action_space):
@@ -341,9 +338,6 @@ class UserAgent:
         # we init a history of information specific to the agent
         self.history[agent_id] = {var : deque(maxlen=lookback) for var in self.features_to_forecast}
 
-        # we init the previous action
-        self.previous_action[agent_id] = jnp.array([0. for i in range(lookforward)])
-
     def adding_observation(self, observation, agent_id):
         """Get observation return action"""
 
@@ -351,7 +345,7 @@ class UserAgent:
         for var in self.features_to_forecast:
             self.history[agent_id][var].append(observation[var])
     
-    def get_model_prediction(self, agent_id):
+    def get_model_prediction(self, agent_id, storage_current):
         """Get observation return action"""
 
         # we get the last 24*7 observations for every variables using history variable
@@ -361,22 +355,20 @@ class UserAgent:
         # we convert the data to a dataframe
         data = pd.DataFrame(data, columns=self.features_to_forecast)
 
+        data_pt = torch.tensor(data.to_numpy())
+
+        # put into format (1, lookback, len(features_to_forecast))
+        data_pt = data_pt.unsqueeze(0)
+
+        std_torch = torch.tensor(self.model.std).float().unsqueeze(0).unsqueeze(0)
+        mean_torch = torch.tensor(self.model.mean).float().unsqueeze(0).unsqueeze(0)
+
         # we normalize the data
-        data = (data - self.mean) / self.std
+        data_pt = (data_pt - mean_torch) / std_torch
 
-        # we convert the data to a tensor
-        x = torch.tensor(data.values).unsqueeze(0)
+        action, futur_state = self.model(data_pt.float(), torch.tensor([storage_current]).float())
 
-        prediction_futur = autoregressive_model(self.model, x, lookforward)
-
-        df_pred = pd.DataFrame(prediction_futur, columns=features_to_forecast)
-
-        # we denormalize the data
-        df_pred = df_pred * self.std + self.mean
-
-        df_pred["solar_generation"][df_pred["solar_generation"] < 0] = 0
-        
-        return df_pred
+        return action[0, 0, 0].detach().numpy().item()
 
     def augment_observations(self, observation, agent_id):
 
@@ -402,25 +394,10 @@ class UserAgent:
         if len(self.history[agent_id]['non_shiftable_load']) < lookback:
             return [0.]
         else:
+
             # we get the prediction
-            df_pred = self.get_model_prediction(agent_id)
+            action_final = self.get_model_prediction(agent_id, current_soc)
 
-            # we create the action init using the previous action
-            # we retrieve the first action of the previous action
-            # and append a 0 to the end of the array
-            action_init = jnp.append(self.previous_action[agent_id][1:], 0)
-
-            # we also divide the action_init by 2
-            action_init = action_init / 2
-
-            # we compute the action
-            action = optimize_action_imagination(df_pred, current_soc, action_init)
-
-            action_final = action[0]
-
-            # we save the action
-            self.previous_action[agent_id] = action
-
-            print("action_final: ", action_final)
+            print("action final", action_final)
 
             return [float(action_final)]
