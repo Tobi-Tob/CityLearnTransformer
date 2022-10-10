@@ -4,13 +4,16 @@ stages:
     cmd: python training_forecast_model_v2.py
     deps:
     - path: training_forecast_model_v2.py
-      md5: 9ab22fa3f2475ebd388873fe8dd1fb88
-      size: 14738
+      md5: 3a57ee200bae123e7ab05a25606463ae
+      size: 18766
     outs:
+    - path: metrics/performance.json
+      md5: c216230213561da9c9377cba4c3146fe
+      size: 105
     - path: models/model_world.pt
-      md5: c2b5bd1efbf85a6b6f85c304fa42f08e
-      size: 245295
+      md5: fe5121bd12bbd4b39dc6b0518d71256b
+      size: 247343
     - path: results_worldmodel/
-      md5: 5356938ae9690e63e5966e55253e1241.dir
-      size: 11703100
+      md5: 971a40f453178943c47a22f71be25c1a.dir
+      size: 11173618
       nfiles: 6

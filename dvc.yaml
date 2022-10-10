@@ -7,3 +7,6 @@ stages:
     - models/model_world.pt
     plots:
     - results_worldmodel/
+    metrics:
+    - metrics/performance.json:
+        cache: false

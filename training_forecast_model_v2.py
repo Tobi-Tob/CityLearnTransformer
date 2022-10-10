@@ -27,6 +27,8 @@ import pickle
 import wandb
 from pytorch_lightning.loggers import WandbLogger
 
+import json
+
 # create logger
 logger = logging.getLogger(__name__)
 
@@ -105,14 +107,20 @@ class ModelAfterPrediction(nn.Module):
         self.hidden_size = hidden_size
 
         # first layer is a BiLSTM layer
-        self.lstm1 = nn.LSTM(input_size, hidden_size, batch_first = True, bidirectional = True)
+        self.lstm1 = nn.LSTM(input_size + 1, hidden_size, batch_first = True, bidirectional = True)
 
         # second layer is a linear layer
         self.linear = nn.Linear(hidden_size*2, output_size)
 
-    def forward(self, input, hidden=None):
-        
-        # reshape input (B, L, C) -> (B, C, L)
+    def forward(self, input, storage_random):
+        # TODO we should add a storage_random to store the random values
+
+        # storage_random is (B,) we should transform it into (B, lookfuture, 1)
+        storage_random = storage_random.unsqueeze(1).unsqueeze(2).repeat(1, input.shape[1], 1)
+
+        # we concatenate the input with the random values
+        input = torch.cat((input, storage_random), dim = 2)
+
         output, _ = self.lstm1(input)
 
         # relu activation
@@ -154,12 +162,12 @@ class ModelCityLearnOptim(pl.LightningModule):
 
         self.loss_env = nn.MSELoss()
 
-    def forward(self, x):
+    def forward(self, x, storage):
         # apply autoregressive model
         futur_state = self.world_model(x)
 
         # we predict the action
-        action = self.action_model(futur_state)
+        action = self.action_model(futur_state.detach(), storage)
 
         return action, futur_state
 
@@ -167,8 +175,11 @@ class ModelCityLearnOptim(pl.LightningModule):
 
         x, y = batch
 
+        # here we should generate a random storage value
+        storage_random = torch.rand((x.shape[0],))
+
         # we predict the action
-        action, futur_state = self(x.float())
+        action, futur_state = self(x.float(), storage_random)
 
         # we compute the loss
         loss_env = self.loss_env(y.float(), futur_state)
@@ -178,22 +189,25 @@ class ModelCityLearnOptim(pl.LightningModule):
         loss_env_5 = self.loss_env(y[:, 4, :], futur_state[:, 4, :])
 
         # we compute the reward
-        #loss_reward = self.loss_reward(action, futur_state.detach())
-        #self.log('loss_reward', loss_reward)
+        loss_reward = self.loss_reward(action, futur_state.detach(), storage_random)
+        self.log('train_loss_reward', loss_reward)
 
         # we log the two reward
         self.log('train_loss_env', loss_env)
         self.log('train_loss_env_1', loss_env_1)
         self.log('train_loss_env_5', loss_env_5)
 
-        return loss_env #+ loss_reward
+        return loss_env + loss_reward
 
     def validation_step(self, batch, batch_idx):
 
         x, y = batch
 
+        # here we should generate a random storage value
+        storage_random = torch.rand((x.shape[0],))
+
         # we predict the action
-        action, futur_state = self(x.float())
+        action, futur_state = self(x.float(), storage_random)
 
         # we compute the loss
         loss_env = self.loss_env(y.float(), futur_state)
@@ -203,15 +217,16 @@ class ModelCityLearnOptim(pl.LightningModule):
         loss_env_5 = self.loss_env(y[:, 4, :], futur_state[:, 4, :])
 
         # we compute the reward
-        #loss_reward = self.loss_reward(action, futur_state.detach())
-        #self.log('val_loss_reward', loss_reward)
+        loss_reward = self.loss_reward(action, futur_state.detach(), storage_random)
+
+        self.log('val_loss_reward', loss_reward)
 
         # we log the two reward        
         self.log('val_loss_env', loss_env)
         self.log('val_loss_env_1', loss_env_1)
         self.log('val_loss_env_5', loss_env_5)
 
-        return loss_env #+ loss_reward
+        return loss_env + loss_reward
 
     def configure_optimizers(self):
         # REQUIRED
@@ -219,14 +234,14 @@ class ModelCityLearnOptim(pl.LightningModule):
         # (LBFGS it is automatically supported, no need for closure function)
         return torch.optim.Adam(self.parameters(), lr=1e-3)
 
-    def loss_reward(self, action, futur_state):
+    def loss_reward(self, action, futur_state, storage_random):
 
         # we initiate the storage with a random value between -1 and 1 for every sample
         # get batch size
-        storage = torch.rand((action.shape[0], 1))
+        storage = storage_random
 
         # init the reward array of shape (batch_size, 1)
-        reward_tot = torch.zeros(action.shape[0], 1)
+        reward_tot = torch.zeros(action.shape[0],)
 
         # we denormalize the futur state using the mean and std of the training set
         std_torch = torch.tensor(self.std).float().unsqueeze(0).unsqueeze(0)
@@ -237,14 +252,14 @@ class ModelCityLearnOptim(pl.LightningModule):
         # we compute the reward
         for i in range(self.lookforward):
             # we compute the reward
-            reward, storage = self.simulation_one_step(futur_state[:, i, :], action[:, i, :], storage)
+
+            reward, storage = self.simulation_one_step(futur_state[:, i, :], action[:, i, 0], storage)
 
             reward_tot = reward_tot + reward
 
         return torch.mean(reward_tot)
 
     def simulation_one_step(self, futur_state, action, storage):
-
 
         # we clip the action to get a value between -1 and 1
         action = torch.clamp(action, -1, 1)
@@ -300,7 +315,12 @@ def test_model(model, test_loader):
     #model.eval()
     with torch.no_grad():
         for batch_idx, (x, y) in enumerate(test_loader):
-            action, futur_state = model(x.float())
+
+            storage_random = torch.rand((x.shape[0],))
+
+            print("storage_random", storage_random.shape)
+
+            action, futur_state = model(x.float(), storage_random)
             print(x.shape)
             print(y.shape)
             print(action.shape)
@@ -336,27 +356,30 @@ def plot_performance_validation(model, dataset_test):
         env_pred_5[var] = []
         env_true_5[var] = []
 
-    
-    for batch_idx, (x, y) in enumerate(dataloader_val):
-        action, futur_state = model(x.float())
+    with torch.no_grad():
         
-        # we denormalize the futur state using the mean and std of the training set
-        std_torch = torch.tensor(model.std).float().unsqueeze(0).unsqueeze(0)
-        mean_torch = torch.tensor(model.mean).float().unsqueeze(0).unsqueeze(0)
+        for batch_idx, (x, y) in enumerate(dataloader_val):
 
-        # we dneormalize the futur state and the input (x) and output (y)
-        futur_state = futur_state * std_torch + mean_torch
-        x = x * std_torch + mean_torch
-        y = y * std_torch + mean_torch
+            storage_random = torch.rand((x.shape[0],))
+            action, futur_state = model(x.float(), storage_random)
+            
+            # we denormalize the futur state using the mean and std of the training set
+            std_torch = torch.tensor(model.std).float().unsqueeze(0).unsqueeze(0)
+            mean_torch = torch.tensor(model.mean).float().unsqueeze(0).unsqueeze(0)
 
-        # we register the prediction and the ground truth for 2 horizon (1 and 5)
-        for idx, var in enumerate(features_to_forecast):
+            # we dneormalize the futur state and the input (x) and output (y)
+            futur_state = futur_state * std_torch + mean_torch
+            x = x * std_torch + mean_torch
+            y = y * std_torch + mean_torch
 
-            env_pred_1[var].append(futur_state[0, 0, idx].item())
-            env_true_1[var].append(y[0, 0, idx].item())
+            # we register the prediction and the ground truth for 2 horizon (1 and 5)
+            for idx, var in enumerate(features_to_forecast):
 
-            env_pred_5[var].append(futur_state[0, 4, idx].item())
-            env_true_5[var].append(y[0, 4, idx].item())
+                env_pred_1[var].append(futur_state[0, 0, idx].item())
+                env_true_1[var].append(y[0, 0, idx].item())
+
+                env_pred_5[var].append(futur_state[0, 4, idx].item())
+                env_true_5[var].append(y[0, 4, idx].item())
 
     # mkdir if not exist results_worldmodel
     if not os.path.exists("results_worldmodel"):
@@ -376,6 +399,72 @@ def plot_performance_validation(model, dataset_test):
 
         # we save the figure
         plt.savefig("results_worldmodel/" + var + ".png")
+
+def compute_performance_validation(model, dataset_test):
+
+    dataloader_val = torch.utils.data.DataLoader(dataset_test, batch_size=1, shuffle=False)
+
+
+    model.eval()
+
+    storage_init = torch.tensor([0.])
+
+    reward_tot = 0
+    
+    # adding torch no grad
+    with torch.no_grad():
+        
+        for batch_idx, (x, y) in enumerate(dataloader_val):
+
+            
+            action, futur_state = model(x.float(), storage_init)
+
+            
+            # we denormalize the futur state using the mean and std of the training set
+            std_torch = torch.tensor(model.std).float().unsqueeze(0).unsqueeze(0)
+            mean_torch = torch.tensor(model.mean).float().unsqueeze(0).unsqueeze(0)
+
+            # we dneormalize the futur state and the input (x) and output (y)
+            futur_state = futur_state * std_torch + mean_torch
+            x = x * std_torch + mean_torch
+            y = y * std_torch + mean_torch
+
+            # we compute the REAL reward and storage_init TODO
+            # we apply the action to the storage
+            reward, storage_init = model.simulation_one_step(y[:, 0, :], action[:, 0, 0], storage_init)
+            reward_tot += reward
+
+            #print(reward)
+
+        print("reward_tot", reward_tot)
+
+        # now we compute the reward for the baseline
+        reward_baseline = 0
+        storage_init = torch.tensor([0.])
+
+        for batch_idx, (x, y) in enumerate(dataloader_val):
+
+            action = torch.tensor([0.])
+            
+            # we denormalize the futur state using the mean and std of the training set
+            std_torch = torch.tensor(model.std).float().unsqueeze(0).unsqueeze(0)
+            mean_torch = torch.tensor(model.mean).float().unsqueeze(0).unsqueeze(0)
+
+            # we dneormalize the futur state and the input (x) and output (y)
+            futur_state = futur_state * std_torch + mean_torch
+            x = x * std_torch + mean_torch
+            y = y * std_torch + mean_torch
+
+            # we compute the REAL reward and storage_init TODO
+            # we apply the action to the storage
+            reward, storage_init = model.simulation_one_step(y[:, 0, :], action, storage_init)
+            reward_baseline += reward
+
+        print("reward_baseline", reward_baseline)
+
+
+    return reward_tot, reward_baseline
+
         
 def train_worldmodel(path_dataset):
 
@@ -405,26 +494,42 @@ def train_worldmodel(path_dataset):
     # we define the model
     model = ModelCityLearnOptim(len(features_to_forecast), hidden_feature, len(features_to_forecast), lookback, lookfuture, mean, std)
 
+    # load model from models_checkpoint/model_world.pt
+    model.load_state_dict(torch.load("models_checkpoint/model_world.pt"))
+
     # model testing
     test_model(model, dataloader_val)
+    
+    train = False
 
-    os.environ['WANDB_API_KEY'] = "71d38d7113a35496e93c0cd6684b16faa4ba7554"
-    wandb.init(project='citylearn', entity='forbu14')
+    if train:
+        os.environ['WANDB_API_KEY'] = "71d38d7113a35496e93c0cd6684b16faa4ba7554"
+        wandb.init(project='citylearn', entity='forbu14')
 
-    # init wandb logger
-    wandb_logger = WandbLogger(project='citylearn', entity='forbu14')
+        # init wandb logger
+        wandb_logger = WandbLogger(project='citylearn', entity='forbu14')
 
-    # we define the trainer
-    trainer = pl.Trainer(max_epochs=10, logger=wandb_logger)
+        # we define the trainer
+        trainer = pl.Trainer(max_epochs=10, logger=wandb_logger)
 
-    # we train the model
-    trainer.fit(model, dataloader, dataloader_val)
+        # we train the model
+        trainer.fit(model, dataloader, dataloader_val)
+
+        # save model
+        torch.save(model.state_dict(), 'models/model_world.pt')
 
     # plot performance after training
     plot_performance_validation(model, dataset_val)
 
-    # save model
-    torch.save(model.state_dict(), 'models/model_world.pt')
+    # TODO compute model performance on real data (reward performance)
+    reward_optim, reward_free = compute_performance_validation(model, dataset_val)
+
+    performance = {"reward_optim": list(reward_optim.detach().numpy()),
+             "reward_free": list(reward_free.detach().numpy()), "ratio": list((reward_optim/reward_free).detach().numpy())}
+
+    # save file into json
+    with open('metrics/performance.json', 'w') as fp:
+        json.dump(performance, fp)
 
     return model
 
