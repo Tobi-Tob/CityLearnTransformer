@@ -398,6 +398,6 @@ class UserAgent:
             # we get the prediction
             action_final = self.get_model_prediction(agent_id, current_soc)
 
-            print("action final", action_final)
+            #print("action final", action_final)
 
             return [float(action_final)]
