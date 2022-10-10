@@ -10,10 +10,6 @@ import sys
 import numpy as np
 import pandas as pd
 
-import jax
-import jax.numpy as jnp
-import optax
-
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
