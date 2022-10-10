@@ -327,6 +327,8 @@ class UserAgent:
         # load model from models_checkpoint/model_world.pt
         self.model.load_state_dict(torch.load("models_checkpoint/model_world.pt"))
 
+        self.model.eval()
+
 
     def set_action_space(self, agent_id, action_space):
         self.action_space[agent_id] = action_space
