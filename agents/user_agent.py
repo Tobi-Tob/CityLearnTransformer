@@ -392,10 +392,10 @@ class UserAgent:
         if len(self.history[agent_id]['non_shiftable_load']) < lookback:
             return [0.]
         else:
+            with torch.no_grad():
+                # we get the prediction
+                action_final = self.get_model_prediction(agent_id, current_soc)
 
-            # we get the prediction
-            action_final = self.get_model_prediction(agent_id, current_soc)
+                #print("action final", action_final)
 
-            #print("action final", action_final)
-
-            return [float(action_final)]
+                return [float(action_final)]

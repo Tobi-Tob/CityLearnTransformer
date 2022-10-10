@@ -160,6 +160,8 @@ class ModelCityLearnOptim(pl.LightningModule):
         self.mean = mean
         self.std = std
 
+        self.gamma = 0.99
+
         self.loss_env = nn.MSELoss()
 
     def forward(self, x, storage):
@@ -255,7 +257,7 @@ class ModelCityLearnOptim(pl.LightningModule):
 
             reward, storage = self.simulation_one_step(futur_state[:, i, :], action[:, i, 0], storage)
 
-            reward_tot = reward_tot + reward
+            reward_tot = reward_tot + reward * self.gamma**i
 
         return torch.mean(reward_tot)
 
@@ -290,7 +292,7 @@ class ModelCityLearnOptim(pl.LightningModule):
         electrical_soc_new = torch.where(action >= 0, storage + action*eff, storage + action/eff)
         electrical_soc_new = torch.clamp(electrical_soc_new, 0, 1)
 
-        return reward_electricity_price + reward_carbon_intensity, electrical_soc_new
+        return reward_electricity_price + reward_carbon_intensity*1.2, electrical_soc_new
 
 # we define the dataset
 class DatasetCityLearn(torch.utils.data.Dataset):
@@ -485,7 +487,7 @@ def train_worldmodel(path_dataset):
     data[features_to_forecast] = (data[features_to_forecast] - mean) / std
 
     # we define the dataset fro validation and training
-    data_train = data.iloc[:-8759]
+    data_train = data
     data_val = data.iloc[-8759:]
 
     # we define the dataset for training and validation
@@ -499,12 +501,12 @@ def train_worldmodel(path_dataset):
     model = ModelCityLearnOptim(len(features_to_forecast), hidden_feature, len(features_to_forecast), lookback, lookfuture, mean, std)
 
     # load model from models_checkpoint/model_world.pt
-    model.load_state_dict(torch.load("models_checkpoint/model_world.pt"))
+    #model.load_state_dict(torch.load("models_checkpoint/model_world.pt"))
 
     # model testing
     test_model(model, dataloader_val)
     
-    train = False
+    train = True
 
     if train:
         os.environ['WANDB_API_KEY'] = "71d38d7113a35496e93c0cd6684b16faa4ba7554"
@@ -514,7 +516,7 @@ def train_worldmodel(path_dataset):
         wandb_logger = WandbLogger(project='citylearn', entity='forbu14')
 
         # we define the trainer
-        trainer = pl.Trainer(max_epochs=10, logger=wandb_logger)
+        trainer = pl.Trainer(max_epochs=15, logger=wandb_logger)
 
         # we train the model
         trainer.fit(model, dataloader, dataloader_val)
