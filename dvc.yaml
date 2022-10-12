@@ -20,3 +20,5 @@ stages:
     - models/model_world_v3.pt
     plots:
     - results_worldmodel/
+    outs:
+    - metrics/performance_v3.json
