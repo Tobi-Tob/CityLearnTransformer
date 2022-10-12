@@ -1,12 +1,15 @@
 stages:
   train:
-    cmd: python training_forecast_model_v2.py
+    cmd: python training_forecast_model_v3.py
     deps:
-    - training_forecast_model_v2.py
+    - data_histo/data.parquet
+    - training_forecast_model_v3.py
     outs:
-    - models/model_world.pt
+    - models/mean_std.pkl
+    - models/model_world_v3.pt
     plots:
     - results_worldmodel/
-    metrics:
-    - metrics/performance.json:
-        cache: false
+  data_creation:
+    cmd: python data_generation.py
+    outs:
+    - data_histo/data.parquet

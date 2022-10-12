@@ -292,7 +292,7 @@ class ModelCityLearnOptim(pl.LightningModule):
         electrical_soc_new = torch.where(action >= 0, storage + action*eff, storage + action/eff)
         electrical_soc_new = torch.clamp(electrical_soc_new, 0, 1)
 
-        return reward_electricity_price + reward_carbon_intensity*1.2, electrical_soc_new
+        return reward_electricity_price + reward_carbon_intensity*1.5, electrical_soc_new
 
 # we define the dataset
 class DatasetCityLearn(torch.utils.data.Dataset):
@@ -516,7 +516,7 @@ def train_worldmodel(path_dataset):
         wandb_logger = WandbLogger(project='citylearn', entity='forbu14')
 
         # we define the trainer
-        trainer = pl.Trainer(max_epochs=15, logger=wandb_logger)
+        trainer = pl.Trainer(max_epochs=10, logger=wandb_logger)
 
         # we train the model
         trainer.fit(model, dataloader, dataloader_val)

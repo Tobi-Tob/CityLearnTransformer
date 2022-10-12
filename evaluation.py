@@ -28,22 +28,7 @@ import wandb
 from pytorch_lightning.loggers import WandbLogger
 
 import json
-
-# create logger
-logger = logging.getLogger(__name__)
-
-# INFO level
-logger.setLevel(logging.INFO)
-
-# create formatter
-handler = logging.StreamHandler(stdout)
-
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-handler.setFormatter(formatter)
-
-# add formatter to logger
-logger.addHandler(handler)
+from agents.models import ModelCityLearn, ModelAfterPrediction, ModelCityLearnOptim, DatasetCityLearn
 
 lookback = 5
 lookfuture = 20
@@ -58,7 +43,19 @@ solar_generation_idx = features_to_forecast.index("solar_generation")
 electricity_pricing_idx = features_to_forecast.index("electricity_pricing")
 carbon_intensity_idx = features_to_forecast.index("carbon_intensity") 
 
-from agents.models import ModelCityLearn, ModelAfterPrediction, ModelCityLearnOptim, DatasetCityLearn
+
+def rework_dataset(data):
+    """
+    Get a dataframe in input of size (nb_building * 8759, nb_feature)
+    Return a list of dataframe of size (nb_building, 8760, nb_feature)
+    """
+    data_list = []
+    
+    data_list = list(data.groupby("building_id"))
+
+    data_list = [data[1].drop("building_id", axis=1) for data in data_list]
+
+    return data_list
 
 def test_model(model, test_loader):
 
@@ -81,20 +78,7 @@ def test_model(model, test_loader):
     model.validation_step((x, y), 0)
     #exit()
 
-def rework_dataset(data):
-    """
-    Get a dataframe in input of size (nb_building * 8759, nb_feature)
-    Return a list of dataframe of size (nb_building, 8760, nb_feature)
-    """
-    data_list = []
-    
-    data_list = list(data.groupby("building_id"))
-
-    data_list = [data[1].drop("building_id", axis=1) for data in data_list]
-
-    return data_list
-
-def train_worldmodel(path_dataset):
+def evaluation_worldmodel(path_dataset):
 
     # we load the dataset
     data = pd.read_parquet(path_dataset)
@@ -110,9 +94,9 @@ def train_worldmodel(path_dataset):
 
     data_list = rework_dataset(data)
 
-    # save to pickle
-    with open("models/mean_std.pkl", "wb") as f:
-        pickle.dump([mean, std], f)
+    # load mean and std from pickle
+    with open("models/mean_std.pkl", "rb") as f:
+        mean, std = pickle.load(f)
 
     # we define the dataset fro validation and training
     data_train = data_list
@@ -129,34 +113,7 @@ def train_worldmodel(path_dataset):
     model = ModelCityLearnOptim(len(features_to_forecast), hidden_feature, len(features_to_forecast), lookback, lookfuture, mean, std)
 
     # load model from models_checkpoint/model_world.pt
-    #model.load_state_dict(torch.load("models_checkpoint/model_world_v3.pt"))
+    model.load_state_dict(torch.load("models/model_world_v3.pt"))
 
     # model testing
     test_model(model, dataloader_val)
-    
-    train = True
-
-    if train:
-        os.environ['WANDB_API_KEY'] = "71d38d7113a35496e93c0cd6684b16faa4ba7554"
-        wandb.init(project='citylearn', entity='forbu14')
-
-        # init wandb logger
-        wandb_logger = WandbLogger(project='citylearn', entity='forbu14')
-
-        # we define the trainer
-        trainer = pl.Trainer(max_epochs=5, logger=wandb_logger)
-
-        # we train the model
-        trainer.fit(model, dataloader, dataloader_val)
-
-        # save model
-        torch.save(model.state_dict(), 'models/model_world_v3.pt')
-
-    return model
-
-if __name__ == "__main__":
-    
-    # we train the model
-    path_dataset = "data_histo/data.parquet"
-
-    train_worldmodel(path_dataset)
