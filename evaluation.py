@@ -284,3 +284,7 @@ def evaluation_worldmodel(path_dataset):
     # save file into json
     with open('metrics/performance_v3.json', 'w') as fp:
         json.dump(performance, fp)
+
+if __name__ == "__main__":
+
+    evaluation_worldmodel("data_histo/data.parquet")
