@@ -7,9 +7,16 @@ stages:
     outs:
     - models/mean_std.pkl
     - models/model_world_v3.pt
-    plots:
-    - results_worldmodel/
   data_creation:
     cmd: python data_generation.py
     outs:
     - data_histo/data.parquet
+  evaluation:
+    cmd: python evaluation.py
+    deps:
+    - data_histo/data.parquet
+    - evaluation.py
+    - models/mean_std.pkl
+    - models/model_world_v3.pt
+    plots:
+    - results_worldmodel/

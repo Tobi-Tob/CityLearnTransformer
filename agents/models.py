@@ -30,6 +30,15 @@ from pytorch_lightning.loggers import WandbLogger
 
 import json
 
+features_to_forecast = ['non_shiftable_load', 'solar_generation', 'electricity_pricing', 'carbon_intensity',
+                                                             'hour', 'month']
+
+hidden_feature = 64
+
+non_shiftable_load_idx = features_to_forecast.index("non_shiftable_load")
+solar_generation_idx = features_to_forecast.index("solar_generation")
+electricity_pricing_idx = features_to_forecast.index("electricity_pricing")
+carbon_intensity_idx = features_to_forecast.index("carbon_intensity") 
 
 # we train the model with pytorch RNN or LSTM
 # we define the model

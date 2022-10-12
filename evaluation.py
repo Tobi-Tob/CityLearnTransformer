@@ -78,6 +78,158 @@ def test_model(model, test_loader):
     model.validation_step((x, y), 0)
     #exit()
 
+
+def plot_performance_validation(model, dataset_test):
+    """
+    In this function we will plot the performance of the model on the validation set
+    Only the environment value will be plotted (not the reward)
+    """
+
+    dataloader_val = torch.utils.data.DataLoader(dataset_test, batch_size=1, shuffle=False)
+
+    model.eval()
+
+    # we create list to store the environment values (prediction and ground truth)
+    env_pred_1 = {}
+    env_true_1 = {}
+
+    env_pred_5 = {}
+    env_true_5 = {}
+
+    for idx, var in enumerate(features_to_forecast):
+        
+        env_pred_1[var] = []
+        env_true_1[var] = []
+
+        env_pred_5[var] = []
+        env_true_5[var] = []
+
+    with torch.no_grad():
+        
+        for batch_idx, (x, y) in enumerate(dataloader_val):
+
+            # get nb_building
+            nb_building = x.shape[1]
+
+            storage_random = torch.rand((x.shape[0], nb_building))
+            action, futur_state = model(x.float(), storage_random)
+            
+            # we denormalize the futur state using the mean and std of the training set
+            std_torch = torch.tensor(model.std).float().unsqueeze(0).unsqueeze(0).unsqueeze(0)
+            mean_torch = torch.tensor(model.mean).float().unsqueeze(0).unsqueeze(0).unsqueeze(0)
+
+            # we dneormalize the futur state and the input (x) and output (y)
+            futur_state = futur_state * std_torch + mean_torch
+            x = x * std_torch + mean_torch
+            y = y * std_torch + mean_torch
+
+            # we register the prediction and the ground truth for 2 horizon (1 and 5)
+            for idx, var in enumerate(features_to_forecast):
+
+                env_pred_1[var].append(futur_state[0, 0, 0, idx].item())
+                env_true_1[var].append(y[0, 0, 0, idx].item())
+
+                env_pred_5[var].append(futur_state[0, 0, 4, idx].item())
+                env_true_5[var].append(y[0, 0, 4, idx].item())
+
+    # mkdir if not exist results_worldmodel
+    if not os.path.exists("results_worldmodel"):
+        os.makedirs("results_worldmodel")
+
+    # we plot the results
+    for idx, var in enumerate(features_to_forecast):
+            
+        plt.figure(figsize=(100, 10))
+        plt.plot(env_pred_1[var], label="pred_1")
+        plt.plot(env_true_1[var], label="true_1")
+        plt.plot(env_pred_5[var], label="pred_5")
+        plt.plot(env_true_5[var], label="true_5")
+        plt.legend()
+        plt.title(var)
+        plt.show()
+
+        # we save the figure
+        plt.savefig("results_worldmodel/" + var + ".png")
+
+def compute_performance_validation(model, dataset_test):
+
+    dataloader_val = torch.utils.data.DataLoader(dataset_test, batch_size=1, shuffle=False)
+
+
+    model.eval()
+
+    storage_init = torch.zeros((1, 5))
+
+    reward_tot = 0
+    reward_grid = 0
+    
+    print("begin validation")
+
+    # adding torch no grad
+    with torch.no_grad():
+        
+        for batch_idx, (x, y) in enumerate(dataloader_val):
+
+            action, futur_state = model(x.float(), storage_init)
+
+            net_demand_old = x[:, :, -1,  non_shiftable_load_idx] - x[:, :, -1, solar_generation_idx] 
+            
+            # we denormalize the futur state using the mean and std of the training set
+            std_torch = torch.tensor(model.std).float().unsqueeze(0).unsqueeze(0).unsqueeze(0)
+            mean_torch = torch.tensor(model.mean).float().unsqueeze(0).unsqueeze(0).unsqueeze(0)
+
+            # we dneormalize the futur state and the input (x) and output (y)
+            futur_state = futur_state * std_torch + mean_torch
+            x = x * std_torch + mean_torch
+            y = y * std_torch + mean_torch
+
+            # we compute the REAL reward and storage_init TODO
+            # we apply the action to the storage
+            
+            reward, storage, reward_price, reward_emission, net_demand_new = model.simulation_one_step(y[:, :, 0, :], action[:, :, 0, 0], storage_init)
+            reward_tot += reward_price
+
+            reward_grid += torch.abs(net_demand_old.sum(axis=1) - net_demand_new.sum(axis=1))
+
+            #print(reward)
+
+        print("reward_tot", reward_tot)
+        print("reward_grid", reward_grid)
+
+        # now we compute the reward for the baseline
+        reward_baseline = 0
+        reward_grid_baseline = 0
+        storage_init = torch.zeros((1, 5))
+
+        for batch_idx, (x, y) in enumerate(dataloader_val):
+
+            action = torch.zeros((1, 5))
+
+            net_demand_old = x[:, :, -1,  non_shiftable_load_idx] - x[:, :, -1, solar_generation_idx] 
+            
+            # we denormalize the futur state using the mean and std of the training set
+            std_torch = torch.tensor(model.std).float().unsqueeze(0).unsqueeze(0).unsqueeze(0)
+            mean_torch = torch.tensor(model.mean).float().unsqueeze(0).unsqueeze(0).unsqueeze(0)
+
+            # we dneormalize the futur state and the input (x) and output (y)
+            futur_state = futur_state * std_torch + mean_torch
+            x = x * std_torch + mean_torch
+            y = y * std_torch + mean_torch
+
+            # we compute the REAL reward and storage_init TODO
+            # we apply the action to the storage
+
+            reward, storage, reward_price, reward_emission, net_demand_new = model.simulation_one_step(y[:, :, 0, :], action, storage_init)
+            reward_baseline += reward
+            reward_grid_baseline += torch.abs(net_demand_old.sum(axis=1) - net_demand_new.sum(axis=1))
+
+        print("reward_baseline", reward_baseline)
+        print("reward_grid_baseline", reward_grid_baseline)
+
+
+    return reward_tot.sum(), reward_baseline.sum()
+
+
 def evaluation_worldmodel(path_dataset):
 
     # we load the dataset
@@ -117,3 +269,18 @@ def evaluation_worldmodel(path_dataset):
 
     # model testing
     test_model(model, dataloader_val)
+
+    plot_performance_validation(model, dataset_val)
+
+    # TODO compute model performance on real data (reward performance)
+    reward_optim, reward_free = compute_performance_validation(model, dataset_val)
+
+    print(reward_optim)
+    print(reward_free)
+
+    performance = {"reward_optim": reward_optim.detach().numpy().item(),
+             "reward_free": reward_free.detach().numpy().item(), "ratio": (reward_optim/reward_free).detach().numpy().item()}
+
+    # save file into json
+    with open('metrics/performance_v3.json', 'w') as fp:
+        json.dump(performance, fp)

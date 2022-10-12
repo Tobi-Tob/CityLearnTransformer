@@ -29,22 +29,6 @@ from pytorch_lightning.loggers import WandbLogger
 
 import json
 
-# create logger
-logger = logging.getLogger(__name__)
-
-# INFO level
-logger.setLevel(logging.INFO)
-
-# create formatter
-handler = logging.StreamHandler(stdout)
-
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-handler.setFormatter(formatter)
-
-# add formatter to logger
-logger.addHandler(handler)
-
 lookback = 5
 lookfuture = 20
 
