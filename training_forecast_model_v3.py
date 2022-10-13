@@ -52,9 +52,11 @@ def test_model(model, test_loader):
 
             storage_random = torch.rand((x.shape[0],5))
 
+            net_comsumption = torch.randn((x.shape[0], 5))
+
             print("storage_random", storage_random.shape)
 
-            action, futur_state = model(x.float(), storage_random)
+            action, futur_state = model(x.float(), storage_random, net_comsumption)
             print(x.shape)
             print(y.shape)
             print(action.shape)
@@ -112,9 +114,6 @@ def train_worldmodel(path_dataset):
     # we define the model
     model = ModelCityLearnOptim(len(features_to_forecast), hidden_feature, len(features_to_forecast), lookback, lookfuture, mean, std)
 
-    # load model from models_checkpoint/model_world.pt
-    #model.load_state_dict(torch.load("models_checkpoint/model_world_v3.pt"))
-
     # model testing
     test_model(model, dataloader_val)
     
@@ -128,7 +127,7 @@ def train_worldmodel(path_dataset):
         wandb_logger = WandbLogger(project='citylearn', entity='forbu14')
 
         # we define the trainer
-        trainer = pl.Trainer(max_epochs=5, logger=wandb_logger)
+        trainer = pl.Trainer(max_epochs=15, logger=wandb_logger)
 
         # we train the model
         trainer.fit(model, dataloader, dataloader_val)

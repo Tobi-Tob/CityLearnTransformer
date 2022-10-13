@@ -65,9 +65,11 @@ def test_model(model, test_loader):
 
             storage_random = torch.rand((x.shape[0],5))
 
+            net_comsumption = torch.randn((x.shape[0], 5))
+
             print("storage_random", storage_random.shape)
 
-            action, futur_state = model(x.float(), storage_random)
+            action, futur_state = model(x.float(), storage_random, net_comsumption)
             print(x.shape)
             print(y.shape)
             print(action.shape)
@@ -77,7 +79,6 @@ def test_model(model, test_loader):
     # we try one validation step
     model.validation_step((x, y), 0)
     #exit()
-
 
 def plot_performance_validation(model, dataset_test):
     """
@@ -111,8 +112,10 @@ def plot_performance_validation(model, dataset_test):
             # get nb_building
             nb_building = x.shape[1]
 
+            net_demand_old = x[:, :, -1,  non_shiftable_load_idx] - x[:, :, -1, solar_generation_idx] 
+
             storage_random = torch.rand((x.shape[0], nb_building))
-            action, futur_state = model(x.float(), storage_random)
+            action, futur_state = model(x.float(), storage_random, net_demand_old)
             
             # we denormalize the futur state using the mean and std of the training set
             std_torch = torch.tensor(model.std).float().unsqueeze(0).unsqueeze(0).unsqueeze(0)
@@ -160,8 +163,9 @@ def compute_performance_validation(model, dataset_test):
 
     storage_init = torch.zeros((1, 5))
 
-    reward_tot = 0
-    reward_grid = 0
+    reward_price_tot = 0
+    reward_emission_tot = 0
+    reward_grid_tot = 0
     
     print("begin validation")
 
@@ -170,9 +174,9 @@ def compute_performance_validation(model, dataset_test):
         
         for batch_idx, (x, y) in enumerate(dataloader_val):
 
-            action, futur_state = model(x.float(), storage_init)
-
             net_demand_old = x[:, :, -1,  non_shiftable_load_idx] - x[:, :, -1, solar_generation_idx] 
+
+            action, futur_state = model(x.float(), storage_init, net_demand_old)
             
             # we denormalize the futur state using the mean and std of the training set
             std_torch = torch.tensor(model.std).float().unsqueeze(0).unsqueeze(0).unsqueeze(0)
@@ -187,18 +191,22 @@ def compute_performance_validation(model, dataset_test):
             # we apply the action to the storage
             
             reward, storage, reward_price, reward_emission, net_demand_new = model.simulation_one_step(y[:, :, 0, :], action[:, :, 0, 0], storage_init)
-            reward_tot += reward_price
+            reward_price_tot += reward_price
+            reward_emission_tot += reward_emission
 
-            reward_grid += torch.abs(net_demand_old.sum(axis=1) - net_demand_new.sum(axis=1))
+            reward_grid_tot += torch.abs(net_demand_old.sum(axis=1) - net_demand_new.sum(axis=1))
 
             #print(reward)
+            storage_init = storage
 
-        print("reward_tot", reward_tot)
-        print("reward_grid", reward_grid)
+        print("reward_price", reward_price_tot)
+        print("reward_emission", reward_emission_tot)
+        print("reward_grid", reward_grid_tot)
 
         # now we compute the reward for the baseline
-        reward_baseline = 0
-        reward_grid_baseline = 0
+        reward_price_tot_baseline = 0
+        reward_emission_tot_baseline = 0
+        reward_grid_tot_baseline = 0
         storage_init = torch.zeros((1, 5))
 
         for batch_idx, (x, y) in enumerate(dataloader_val):
@@ -220,14 +228,19 @@ def compute_performance_validation(model, dataset_test):
             # we apply the action to the storage
 
             reward, storage, reward_price, reward_emission, net_demand_new = model.simulation_one_step(y[:, :, 0, :], action, storage_init)
-            reward_baseline += reward
-            reward_grid_baseline += torch.abs(net_demand_old.sum(axis=1) - net_demand_new.sum(axis=1))
+            reward_price_tot_baseline += reward_price
+            reward_emission_tot_baseline += reward_emission
+            reward_grid_tot_baseline += torch.abs(net_demand_old.sum(axis=1) - net_demand_new.sum(axis=1))
 
-        print("reward_baseline", reward_baseline)
-        print("reward_grid_baseline", reward_grid_baseline)
+            storage_init = storage
+
+        print("reward_price_baseline", reward_price_tot_baseline)
+        print("reward_emission_baseline", reward_emission_tot_baseline)
+        print("reward_grid_baseline", reward_grid_tot_baseline)
 
 
-    return reward_tot.sum(), reward_baseline.sum()
+    return {"reward_price": reward_price_tot.mean(), "reward_emission": reward_emission_tot.mean(), "reward_grid": reward_grid_tot.mean(),
+                         "reward_price_baseline": reward_price_tot_baseline.mean(), "reward_emission_baseline": reward_emission_tot_baseline.mean(), "reward_grid_baseline": reward_grid_tot_baseline.mean()}
 
 
 def evaluation_worldmodel(path_dataset):
@@ -273,13 +286,25 @@ def evaluation_worldmodel(path_dataset):
     plot_performance_validation(model, dataset_val)
 
     # TODO compute model performance on real data (reward performance)
-    reward_optim, reward_free = compute_performance_validation(model, dataset_val)
+    rewards = compute_performance_validation(model, dataset_val)
 
-    print(reward_optim)
-    print(reward_free)
+    performance = rewards
 
-    performance = {"reward_optim": reward_optim.detach().numpy().item(),
-             "reward_free": reward_free.detach().numpy().item(), "ratio": (reward_optim/reward_free).detach().numpy().item()}
+    #we compute the different ratios
+    ratio_price = performance["reward_price"] / performance["reward_price_baseline"]
+    ratio_emission = performance["reward_emission"] / performance["reward_emission_baseline"]
+    ratio_grid = performance["reward_grid"] / performance["reward_grid_baseline"]
+
+    # we add them to the performance dict
+    performance["ratio_price"] = ratio_price
+    performance["ratio_emission"] = ratio_emission
+    performance["ratio_grid"] = ratio_grid
+
+    print(performance)
+
+    # we convert every value to float
+    for key in performance.keys():
+        performance[key] = float(performance[key])
 
     # save file into json
     with open('metrics/performance_v3.json', 'w') as fp:

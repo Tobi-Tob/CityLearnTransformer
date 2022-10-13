@@ -91,18 +91,6 @@ class EnvCityGym(gym.Env):
         return self.env.render(mode)
 
 
-def rework_dataset(data):
-    """
-    Get a dataframe in input of size (nb_building * 8759, nb_feature)
-    Return a list of dataframe of size (nb_building, 8760, nb_feature)
-    """
-    data_list = []
-    
-    data_list = list(data.groupby("building_id"))
-
-    data_list = [data[1].drop("building_id", axis=1) for data in data_list]
-
-    return data_list
 
 
 def env_run_without_action(actions_all=None):

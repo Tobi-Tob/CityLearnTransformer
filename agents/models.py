@@ -101,12 +101,12 @@ class ModelAfterPrediction(nn.Module):
         self.hidden_size = hidden_size
 
         # first layer is a BiLSTM layer
-        self.lstm1 = nn.LSTM(input_size + 1, hidden_size, batch_first = True, bidirectional = True)
+        self.lstm1 = nn.LSTM(input_size + 2, hidden_size, batch_first = True, bidirectional = True)
 
         # second layer is a linear layer
         self.linear = nn.Linear(hidden_size*2, output_size)
 
-    def forward(self, input, storage_random):
+    def forward(self, input, storage_random, netconsumption_random):
         # input is a tensor of shape (batch_size, nb_building, lookback, input_size)
         # we need to reshape it to (batch_size* nb_building, lookback, input_size)
         batch_size = input.shape[0]
@@ -118,8 +118,11 @@ class ModelAfterPrediction(nn.Module):
         storage_random = storage_random.unsqueeze(2).unsqueeze(3).repeat(1, 1, input.shape[1], 1)
         storage_random = storage_random.reshape(batch_size*nb_building, -1, 1)
 
+        netconsumption_random = netconsumption_random.unsqueeze(2).unsqueeze(3).repeat(1, 1, input.shape[1], 1)
+        netconsumption_random = netconsumption_random.reshape(batch_size*nb_building, -1, 1)
+
         # we concatenate the input with the random values
-        input = torch.cat((input, storage_random), dim = 2)
+        input = torch.cat((input, storage_random, netconsumption_random), dim = 2)
 
         output, _ = self.lstm1(input)
 
@@ -167,12 +170,12 @@ class ModelCityLearnOptim(pl.LightningModule):
 
         self.loss_env = nn.MSELoss()
 
-    def forward(self, x, storage):
+    def forward(self, x, storage, netconsumption):
         # apply autoregressive model
         futur_state = self.world_model(x) # return (batch_size, nb_building, lookfuture, output_size)
 
         # we predict the action
-        action = self.action_model(futur_state.detach(), storage) # return (batch_size, nb_building, lookfuture, 1)
+        action = self.action_model(futur_state.detach(), storage, netconsumption) # return (batch_size, nb_building, lookfuture, 1)
 
         return action, futur_state
 
@@ -182,11 +185,15 @@ class ModelCityLearnOptim(pl.LightningModule):
         # get nb_building
         nb_building = x.shape[1]
 
+        
+
         # here we should generate a random storage value
         storage_random = torch.rand((x.shape[0], nb_building))
 
+        net_demand_old = x[:, :, -1,  non_shiftable_load_idx] - x[:, :, -1, solar_generation_idx] 
+
         # we predict the action
-        action, futur_state = self(x.float(), storage_random)
+        action, futur_state = self(x.float(), storage_random, net_demand_old)
 
         # we compute the loss
         loss_env = self.loss_env(y.float(), futur_state)
@@ -196,7 +203,8 @@ class ModelCityLearnOptim(pl.LightningModule):
         loss_env_5 = self.loss_env(y[:, :, 4, :], futur_state[:, :, 4, :])
 
         # we compute the reward
-        loss_reward = self.loss_reward(action, futur_state.detach(), storage_random, x)
+        loss_reward_demand, loss_reward_grid = self.loss_reward(action, futur_state.detach(), storage_random, net_demand_old)
+        loss_reward = loss_reward_demand + loss_reward_grid
 
         return loss_env, loss_env_1, loss_env_5, loss_reward
 
@@ -232,7 +240,7 @@ class ModelCityLearnOptim(pl.LightningModule):
         # (LBFGS it is automatically supported, no need for closure function)
         return torch.optim.Adam(self.parameters(), lr=1e-3)
 
-    def loss_reward(self, action, futur_state, storage_random, x):
+    def loss_reward(self, action, futur_state, storage_random, net_demand_old):
 
         # get nb_building
         nb_building = futur_state.shape[1]
@@ -252,7 +260,7 @@ class ModelCityLearnOptim(pl.LightningModule):
 
         futur_state = futur_state * std_torch + mean_torch
 
-        net_demand_old = x[:, :, -1,  non_shiftable_load_idx] - x[:, :, -1, solar_generation_idx] 
+        net_demand_old = net_demand_old
 
         # we compute the reward
         for i in range(self.lookforward):
@@ -267,7 +275,7 @@ class ModelCityLearnOptim(pl.LightningModule):
             # update the net demand
             net_demand_old = net_demand_new
 
-        return torch.mean(reward_tot) + torch.mean(reward_grid)
+        return torch.mean(reward_tot), torch.mean(reward_grid)
 
     def simulation_one_step(self, futur_state, action, storage):
 

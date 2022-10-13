@@ -7,15 +7,15 @@ stages:
       md5: a3bb4417b0cc89c17942dbff6f44ed4a
       size: 1924933
     - path: training_forecast_model_v3.py
-      md5: 6647279cbb44bb191d0fe8fdc94888d4
-      size: 4279
+      md5: b389dca62648ba63fb1d6206884b1f3b
+      size: 4222
     outs:
     - path: models/mean_std.pkl
       md5: 01fddd90baf6e5593405d6e074b2692d
       size: 1269
     - path: models/model_world_v3.pt
-      md5: 1506d1b293d4f395adb39bc208da5ff1
-      size: 247343
+      md5: ae2fb11d2acf30a8ab7fa88c67d784c6
+      size: 249391
   data_creation:
     cmd: python data_generation.py
     outs:
@@ -29,19 +29,19 @@ stages:
       md5: a3bb4417b0cc89c17942dbff6f44ed4a
       size: 1924933
     - path: evaluation.py
-      md5: 81b31eba76cd6baaa60e22eb45ed51fd
-      size: 9985
+      md5: 30c36a16ec145673a497dafbe4291204
+      size: 11370
     - path: models/mean_std.pkl
       md5: 01fddd90baf6e5593405d6e074b2692d
       size: 1269
     - path: models/model_world_v3.pt
-      md5: 1506d1b293d4f395adb39bc208da5ff1
-      size: 247343
+      md5: ae2fb11d2acf30a8ab7fa88c67d784c6
+      size: 249391
     outs:
     - path: metrics/performance_v3.json
-      md5: 34393fb6963c970f600d3f3bcaa1f349
-      size: 94
+      md5: bea454b2df1a1036366353483dea5048
+      size: 341
     - path: results_worldmodel/
-      md5: 377be73b0836f78f8268af60ee27c4b0.dir
-      size: 10868532
+      md5: 874fc02f4fe7b552e35c89bc55cdeab9.dir
+      size: 10774555
       nfiles: 6
