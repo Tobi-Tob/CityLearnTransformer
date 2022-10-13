@@ -185,15 +185,22 @@ class ModelCityLearnOptim(pl.LightningModule):
         # get nb_building
         nb_building = x.shape[1]
 
-        
-
         # here we should generate a random storage value
         storage_random = torch.rand((x.shape[0], nb_building))
 
-        net_demand_old = x[:, :, -1,  non_shiftable_load_idx] - x[:, :, -1, solar_generation_idx] 
+        # we denormalize the futur state using the mean and std of the training set
+        std_torch = torch.tensor(self.std).float().unsqueeze(0).unsqueeze(0)
+        mean_torch = torch.tensor(self.mean).float().unsqueeze(0).unsqueeze(0)
+
+        x_unnormalize = x * std_torch + mean_torch
+
+        net_demand_old_norm = x[:, :, -1,  non_shiftable_load_idx] - x[:, :, -1, solar_generation_idx] 
 
         # we predict the action
-        action, futur_state = self(x.float(), storage_random, net_demand_old)
+        action, futur_state = self(x.float(), storage_random, net_demand_old_norm)
+
+        # we get denormalize net_demand_old_norm using x_unnormalize
+        net_demand_old_denorm = x_unnormalize[:, :, -1,  non_shiftable_load_idx] - x_unnormalize[:, :, -1, solar_generation_idx]
 
         # we compute the loss
         loss_env = self.loss_env(y.float(), futur_state)
@@ -203,7 +210,7 @@ class ModelCityLearnOptim(pl.LightningModule):
         loss_env_5 = self.loss_env(y[:, :, 4, :], futur_state[:, :, 4, :])
 
         # we compute the reward
-        loss_reward_demand, loss_reward_grid = self.loss_reward(action, futur_state.detach(), storage_random, net_demand_old)
+        loss_reward_demand, loss_reward_grid = self.loss_reward(action, futur_state.detach(), storage_random, net_demand_old_denorm)
         loss_reward = loss_reward_demand + loss_reward_grid
 
         return loss_env, loss_env_1, loss_env_5, loss_reward
@@ -259,8 +266,6 @@ class ModelCityLearnOptim(pl.LightningModule):
         mean_torch = torch.tensor(self.mean).float().unsqueeze(0).unsqueeze(0)
 
         futur_state = futur_state * std_torch + mean_torch
-
-        net_demand_old = net_demand_old
 
         # we compute the reward
         for i in range(self.lookforward):

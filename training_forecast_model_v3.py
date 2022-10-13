@@ -117,6 +117,7 @@ def train_worldmodel(path_dataset):
     # model testing
     test_model(model, dataloader_val)
     
+    
     train = True
 
     if train:

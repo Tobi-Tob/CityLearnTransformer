@@ -194,6 +194,8 @@ def compute_performance_validation(model, dataset_test):
             reward_price_tot += reward_price
             reward_emission_tot += reward_emission
 
+            net_demand_old = x[:, :, -1,  non_shiftable_load_idx] - x[:, :, -1, solar_generation_idx] 
+
             reward_grid_tot += torch.abs(net_demand_old.sum(axis=1) - net_demand_new.sum(axis=1))
 
             #print(reward)
@@ -224,13 +226,14 @@ def compute_performance_validation(model, dataset_test):
             x = x * std_torch + mean_torch
             y = y * std_torch + mean_torch
 
+            net_demand_old_unnormalize = x[:, :, -1,  non_shiftable_load_idx] - x[:, :, -1, solar_generation_idx] 
+            
             # we compute the REAL reward and storage_init TODO
             # we apply the action to the storage
-
             reward, storage, reward_price, reward_emission, net_demand_new = model.simulation_one_step(y[:, :, 0, :], action, storage_init)
             reward_price_tot_baseline += reward_price
             reward_emission_tot_baseline += reward_emission
-            reward_grid_tot_baseline += torch.abs(net_demand_old.sum(axis=1) - net_demand_new.sum(axis=1))
+            reward_grid_tot_baseline += torch.abs(net_demand_old_unnormalize.sum(axis=1) - net_demand_new.sum(axis=1))
 
             storage_init = storage
 
