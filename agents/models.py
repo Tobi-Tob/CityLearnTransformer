@@ -25,7 +25,7 @@ import pytorch_lightning as pl
 
 import pickle
 
-import wandb
+
 from pytorch_lightning.loggers import WandbLogger
 
 import json
@@ -211,7 +211,7 @@ class ModelCityLearnOptim(pl.LightningModule):
 
         # we compute the reward
         loss_reward_demand, loss_reward_grid = self.loss_reward(action, futur_state.detach(), storage_random, net_demand_old_denorm)
-        loss_reward = loss_reward_demand + loss_reward_grid
+        loss_reward = loss_reward_demand + loss_reward_grid/10
 
         return loss_env, loss_env_1, loss_env_5, loss_reward
 

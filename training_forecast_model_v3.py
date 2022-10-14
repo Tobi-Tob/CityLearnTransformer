@@ -128,7 +128,7 @@ def train_worldmodel(path_dataset):
         wandb_logger = WandbLogger(project='citylearn', entity='forbu14')
 
         # we define the trainer
-        trainer = pl.Trainer(max_epochs=15, logger=wandb_logger)
+        trainer = pl.Trainer(max_epochs=20, logger=wandb_logger)
 
         # we train the model
         trainer.fit(model, dataloader, dataloader_val)
