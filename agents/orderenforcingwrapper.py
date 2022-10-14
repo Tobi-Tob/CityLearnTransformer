@@ -81,7 +81,7 @@ class OrderEnforcingAgent:
         self.action_space = None
 
         # now we load mean and std from models_checkpoint/mean_std.pkl
-        with open("models/mean_std.pkl", "rb") as f:
+        with open("models_checkpoint/mean_std.pkl", "rb") as f:
             self.mean, self.std = pickle.load(f)
 
 
@@ -89,7 +89,7 @@ class OrderEnforcingAgent:
         self.model = ModelCityLearnOptim(len(features_to_forecast), hidden_feature,
                         len(features_to_forecast), lookback, lookfuture, self.mean, self.std)
 
-        self.model.load_state_dict(torch.load("models/model_world_v3.pt"))
+        self.model.load_state_dict(torch.load("models_checkpoint/model_world_v3.pt"))
 
 
     
