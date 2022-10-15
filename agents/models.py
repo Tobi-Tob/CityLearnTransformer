@@ -182,6 +182,14 @@ class ModelCityLearnOptim(pl.LightningModule):
 
         return action, futur_state
 
+    def normalize_env_loss(self, y, y_pred):
+
+        # we normalize the loss by the std of the output
+        y = y / self.std
+        y_pred = y_pred / self.std
+
+        return self.loss_env(y_pred, y)
+
     def step(self, batch, batch_idx):
         x, y = batch
 
@@ -197,8 +205,7 @@ class ModelCityLearnOptim(pl.LightningModule):
         action, futur_state = self(x.float(), storage_random, net_demand_old_norm)
 
         # we compute the loss
-        loss_env = self.loss_env(y.float(), futur_state)
-
+        loss_env = self.normalize_env_loss(y.float(), futur_state)
 
         # loss for the first step and the 5th step
         loss_env_1 = self.loss_env(y[:, :, 0, :], futur_state[:, :, 0, :])
@@ -213,7 +220,9 @@ class ModelCityLearnOptim(pl.LightningModule):
 
         loss_env, loss_env_1, loss_env_5, loss_reward_price, loss_reward_emission, loss_reward_grid = self.step(batch, batch_idx)
 
+
         loss_reward_price, loss_reward_emission, loss_reward_grid = self.normalize_rewards(loss_reward_price, loss_reward_emission, loss_reward_grid)
+
 
         self.log('train_loss_reward_emission', loss_reward_emission)
         self.log('train_loss_reward_price', loss_reward_price)
@@ -272,10 +281,10 @@ class ModelCityLearnOptim(pl.LightningModule):
         storage = storage_random
 
         # init the reward array of shape (batch_size, 1)
-        reward_emission = torch.zeros(action.shape[0], nb_building)
-        reward_price = torch.zeros(action.shape[0], nb_building)
+        reward_emission_tot = torch.zeros(action.shape[0], nb_building)
+        reward_price_tot = torch.zeros(action.shape[0], nb_building)
 
-        reward_grid = torch.zeros(action.shape[0],)
+        reward_grid_tot = torch.zeros(action.shape[0],)
 
         # we compute the reward
         for i in range(self.lookforward):
@@ -284,14 +293,16 @@ class ModelCityLearnOptim(pl.LightningModule):
             reward, storage, reward_price, reward_emission, net_demand_new = self.simulation_one_step(y[:, :, i, :],
                                                             action[:, :, i, 0], storage)
 
+
             # compute grid reward from net demand old and new
-            reward_grid += torch.abs(net_demand_old.sum(axis=1) - net_demand_new.sum(axis=1))
-            reward_emission = reward_emission + reward_emission 
-            reward_price = reward_price + reward_price
+            reward_grid_tot += torch.abs(net_demand_old.sum(axis=1) - net_demand_new.sum(axis=1))
+
+            reward_emission_tot += reward_emission 
+            reward_price_tot += reward_price
             # update the net demand
             net_demand_old = net_demand_new
 
-        return torch.mean(reward_price), torch.mean(reward_emission), torch.mean(reward_grid)
+        return torch.sum(reward_price_tot), torch.sum(reward_emission_tot), torch.sum(reward_grid_tot)
 
     def simulation_one_step(self, futur_state, action, storage):
 
