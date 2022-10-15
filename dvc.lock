@@ -3,45 +3,46 @@ stages:
   train:
     cmd: python training_forecast_model_v3.py
     deps:
+    - path: agents/models.py
+      md5: 54e844460b34ce80932ecfa637b085a8
+      size: 14347
     - path: data_histo/data.parquet
-      md5: a3bb4417b0cc89c17942dbff6f44ed4a
-      size: 1924933
+      md5: d07ad457cc968d1031a48c0a9e4c7d31
+      size: 1924946
     - path: training_forecast_model_v3.py
-      md5: 667bb9af02bdb3e3ff70ba8d927898b2
-      size: 4228
+      md5: 3187e7e9b6ec31bae500873f6c2cb5f9
+      size: 3859
     outs:
-    - path: models/mean_std.pkl
-      md5: 01fddd90baf6e5593405d6e074b2692d
-      size: 1269
     - path: models/model_world_v3.pt
-      md5: 72fb6d5a2afdb6b3473f253f38203868
+      md5: a42589e69385cdb35cede8ee5bea0a69
       size: 249391
   data_creation:
     cmd: python data_generation.py
+    deps:
+    - path: data_generation.py
+      md5: 69b7f06d76e4c06a6b0c1a988004d271
+      size: 4713
     outs:
     - path: data_histo/data.parquet
-      md5: a3bb4417b0cc89c17942dbff6f44ed4a
-      size: 1924933
+      md5: d07ad457cc968d1031a48c0a9e4c7d31
+      size: 1924946
   evaluation:
     cmd: python evaluation.py
     deps:
     - path: data_histo/data.parquet
-      md5: a3bb4417b0cc89c17942dbff6f44ed4a
-      size: 1924933
+      md5: d07ad457cc968d1031a48c0a9e4c7d31
+      size: 1924946
     - path: evaluation.py
-      md5: 137db26fa13ae6b6bc6574624cc197d2
-      size: 11616
-    - path: models/mean_std.pkl
-      md5: 01fddd90baf6e5593405d6e074b2692d
-      size: 1269
+      md5: e02cebf1c1fee4ac5011c159a4414760
+      size: 11233
     - path: models/model_world_v3.pt
-      md5: 72fb6d5a2afdb6b3473f253f38203868
+      md5: a42589e69385cdb35cede8ee5bea0a69
       size: 249391
     outs:
     - path: metrics/performance_v3.json
-      md5: 90c73e64bb3be8cafdc8d5548c8c06bf
-      size: 343
+      md5: fdf7c9cb8e540fbda2299fa0d45bfc52
+      size: 336
     - path: results_worldmodel/
-      md5: ed91b11aaa181f65bc2738e3db490f35.dir
-      size: 10609908
-      nfiles: 6
+      md5: 0718c4a8462fcfff109794a4eb516368.dir
+      size: 15647103
+      nfiles: 13

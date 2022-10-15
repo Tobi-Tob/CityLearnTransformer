@@ -191,7 +191,6 @@ class OrderEnforcingAgent:
 
             net_demand_old = obs_history[:, :, -1,  non_shiftable_load_idx] - obs_history[:, :, -1, solar_generation_idx] 
 
-
             actions, futur_state = self.model(obs_history, net_demand_old, storage_value)
 
             actions = actions[:, :, 0, 0]

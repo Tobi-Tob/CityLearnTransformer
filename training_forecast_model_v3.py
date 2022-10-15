@@ -87,18 +87,8 @@ def train_worldmodel(path_dataset):
 
     data.reset_index(inplace=True)
 
-    # normalize the data
-    # save the mean and std to denormalize the data
-    mean = data[features_to_forecast].mean()
-    std = data[features_to_forecast].std()
-
-    data[features_to_forecast] = (data[features_to_forecast] - mean) / std
 
     data_list = rework_dataset(data)
-
-    # save to pickle
-    with open("models/mean_std.pkl", "wb") as f:
-        pickle.dump([mean, std], f)
 
     # we define the dataset fro validation and training
     data_train = data_list
@@ -112,7 +102,7 @@ def train_worldmodel(path_dataset):
     dataloader_val = torch.utils.data.DataLoader(dataset_val, batch_size=32, shuffle=False)
 
     # we define the model
-    model = ModelCityLearnOptim(len(features_to_forecast), hidden_feature, len(features_to_forecast), lookback, lookfuture, mean, std)
+    model = ModelCityLearnOptim(len(features_to_forecast), hidden_feature, len(features_to_forecast), lookback, lookfuture)
 
     # model testing
     test_model(model, dataloader_val)
@@ -128,7 +118,7 @@ def train_worldmodel(path_dataset):
         wandb_logger = WandbLogger(project='citylearn', entity='forbu14')
 
         # we define the trainer
-        trainer = pl.Trainer(max_epochs=20, logger=wandb_logger)
+        trainer = pl.Trainer(max_epochs=10, logger=wandb_logger)
 
         # we train the model
         trainer.fit(model, dataloader, dataloader_val)

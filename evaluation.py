@@ -116,15 +116,6 @@ def plot_performance_validation(model, dataset_test):
 
             storage_random = torch.rand((x.shape[0], nb_building))
             action, futur_state = model(x.float(), storage_random, net_demand_old)
-            
-            # we denormalize the futur state using the mean and std of the training set
-            std_torch = torch.tensor(model.std).float().unsqueeze(0).unsqueeze(0).unsqueeze(0)
-            mean_torch = torch.tensor(model.mean).float().unsqueeze(0).unsqueeze(0).unsqueeze(0)
-
-            # we dneormalize the futur state and the input (x) and output (y)
-            futur_state = futur_state * std_torch + mean_torch
-            x = x * std_torch + mean_torch
-            y = y * std_torch + mean_torch
 
             # we register the prediction and the ground truth for 2 horizon (1 and 5)
             for idx, var in enumerate(features_to_forecast):
@@ -145,19 +136,58 @@ def plot_performance_validation(model, dataset_test):
         plt.figure(figsize=(100, 10))
         plt.plot(env_pred_1[var], label="pred_1")
         plt.plot(env_true_1[var], label="true_1")
-        plt.plot(env_pred_5[var], label="pred_5")
-        plt.plot(env_true_5[var], label="true_5")
+
         plt.legend()
         plt.title(var)
         plt.show()
 
         # we save the figure
-        plt.savefig("results_worldmodel/" + var + ".png")
+        plt.savefig("results_worldmodel/" + var + "_1.png")
 
+        plt.figure(figsize=(100, 10))
+        plt.plot(env_pred_5[var], label="pred_5")
+        plt.plot(env_true_5[var], label="true_5")
+
+        plt.legend()
+        plt.title(var)
+        plt.show()
+
+        # we save the figure
+        plt.savefig("results_worldmodel/" + var + "_5.png")
+
+
+def plot_action_list(action_list, state_list):
+    
+    # first we concatenate the action list to get a proper tensor
+    action_list = torch.cat(action_list, dim=0)
+
+    # same thing for the state list
+    state_list = torch.cat(state_list, dim=0)
+
+    # action_list is of size (nb_step, nb_building) state list is of size (nb_step, nb_building, nb_feature)
+    # we map the action to the state
+    action_list = action_list.unsqueeze(2)
+
+    # we concatenate the action and the state
+    action_state_list = torch.cat((state_list, action_list), dim=2)
+
+    # now we can change the dimension to (nb_step * nb_building, nb_feature + 1)
+    action_state_list = action_state_list.view(-1, action_state_list.shape[-1])
+
+    # we can create the DataFrame with columns features_to_forecast + [actions]
+    df = pd.DataFrame(action_state_list.numpy(), columns=features_to_forecast + ["actions"])
+
+    print(df.head())
+
+    # now we can look at the action with respect to hour
+    plot = df.groupby("hour")["actions"].mean().plot()
+    fig = plot.get_figure()
+    # we save the plot in the results_worldmodel folder
+    fig.savefig("results_worldmodel/action_hour.png")
+    
 def compute_performance_validation(model, dataset_test):
 
     dataloader_val = torch.utils.data.DataLoader(dataset_test, batch_size=1, shuffle=False)
-
 
     model.eval()
 
@@ -166,44 +196,44 @@ def compute_performance_validation(model, dataset_test):
     reward_price_tot = 0
     reward_emission_tot = 0
     reward_grid_tot = 0
-    
+    action_previous = 0
+
     print("begin validation")
+    action_done_list = []
+    state_list = []
 
     # adding torch no grad
     with torch.no_grad():
         
         for batch_idx, (x, y) in enumerate(dataloader_val):
 
-            net_demand_old = x[:, :, -1,  non_shiftable_load_idx] - x[:, :, -1, solar_generation_idx] 
+            net_demand_old = x[:, :, -1,  non_shiftable_load_idx] - x[:, :, -1, solar_generation_idx]
 
             action, futur_state = model(x.float(), storage_init, net_demand_old)
-            
-            # we denormalize the futur state using the mean and std of the training set
-            std_torch = torch.tensor(model.std).float().unsqueeze(0).unsqueeze(0).unsqueeze(0)
-            mean_torch = torch.tensor(model.mean).float().unsqueeze(0).unsqueeze(0).unsqueeze(0)
-
-            # we dneormalize the futur state and the input (x) and output (y)
-            futur_state = futur_state * std_torch + mean_torch
-            x = x * std_torch + mean_torch
-            y = y * std_torch + mean_torch
-
-            # we compute the REAL reward and storage_init TODO
-            # we apply the action to the storage
             
             reward, storage, reward_price, reward_emission, net_demand_new = model.simulation_one_step(y[:, :, 0, :], action[:, :, 0, 0], storage_init)
             reward_price_tot += reward_price
             reward_emission_tot += reward_emission
 
-            net_demand_old = x[:, :, -1,  non_shiftable_load_idx] - x[:, :, -1, solar_generation_idx] 
+            net_demand_old = x[:, :, -1,  non_shiftable_load_idx] - x[:, :, -1, solar_generation_idx] + action_previous*6.4
 
             reward_grid_tot += torch.abs(net_demand_old.sum(axis=1) - net_demand_new.sum(axis=1))
 
             #print(reward)
             storage_init = storage
+            action_previous = action[:, :, 0, 0]
+
+            # append action[:, :, 0, 0] to action_done_list in list format
+            action_done_list.append(action[:, :, 0, 0])
+            state_list.append(x[:, :, -1, :])
+
 
         print("reward_price", reward_price_tot)
         print("reward_emission", reward_emission_tot)
         print("reward_grid", reward_grid_tot)
+
+        # now we can a plot of the action done
+        plot_action_list(action_done_list, state_list)
 
         # now we compute the reward for the baseline
         reward_price_tot_baseline = 0
@@ -216,24 +246,13 @@ def compute_performance_validation(model, dataset_test):
             action = torch.zeros((1, 5))
 
             net_demand_old = x[:, :, -1,  non_shiftable_load_idx] - x[:, :, -1, solar_generation_idx] 
-            
-            # we denormalize the futur state using the mean and std of the training set
-            std_torch = torch.tensor(model.std).float().unsqueeze(0).unsqueeze(0).unsqueeze(0)
-            mean_torch = torch.tensor(model.mean).float().unsqueeze(0).unsqueeze(0).unsqueeze(0)
 
-            # we dneormalize the futur state and the input (x) and output (y)
-            futur_state = futur_state * std_torch + mean_torch
-            x = x * std_torch + mean_torch
-            y = y * std_torch + mean_torch
-
-            net_demand_old_unnormalize = x[:, :, -1,  non_shiftable_load_idx] - x[:, :, -1, solar_generation_idx] 
-            
             # we compute the REAL reward and storage_init TODO
             # we apply the action to the storage
             reward, storage, reward_price, reward_emission, net_demand_new = model.simulation_one_step(y[:, :, 0, :], action, storage_init)
             reward_price_tot_baseline += reward_price
             reward_emission_tot_baseline += reward_emission
-            reward_grid_tot_baseline += torch.abs(net_demand_old_unnormalize.sum(axis=1) - net_demand_new.sum(axis=1))
+            reward_grid_tot_baseline += torch.abs(net_demand_old.sum(axis=1) - net_demand_new.sum(axis=1))
 
             storage_init = storage
 
@@ -253,18 +272,8 @@ def evaluation_worldmodel(path_dataset):
 
     data.reset_index(inplace=True)
 
-    # normalize the data
-    # save the mean and std to denormalize the data
-    mean = data[features_to_forecast].mean()
-    std = data[features_to_forecast].std()
-
-    data[features_to_forecast] = (data[features_to_forecast] - mean) / std
 
     data_list = rework_dataset(data)
-
-    # load mean and std from pickle
-    with open("models/mean_std.pkl", "rb") as f:
-        mean, std = pickle.load(f)
 
     # we define the dataset fro validation and training
     data_train = data_list
@@ -278,7 +287,7 @@ def evaluation_worldmodel(path_dataset):
     dataloader_val = torch.utils.data.DataLoader(dataset_val, batch_size=32, shuffle=False)
 
     # we define the model
-    model = ModelCityLearnOptim(len(features_to_forecast), hidden_feature, len(features_to_forecast), lookback, lookfuture, mean, std)
+    model = ModelCityLearnOptim(len(features_to_forecast), hidden_feature, len(features_to_forecast), lookback, lookfuture)
 
     # load model from models_checkpoint/model_world.pt
     model.load_state_dict(torch.load("models/model_world_v3.pt"))

@@ -150,7 +150,7 @@ class ModelCityLearnOptim(pl.LightningModule):
     We train the action model using the reward loss
 
     """
-    def __init__(self, input_size, hidden_size, output_size, lookback = 5, lookforward = 20, mean = 0, std = 1):
+    def __init__(self, input_size, hidden_size, output_size, lookback = 5, lookforward = 20):
         super().__init__()
 
         # already trained learn model
@@ -162,20 +162,16 @@ class ModelCityLearnOptim(pl.LightningModule):
         self.lookback = lookback
         self.lookforward = lookforward
 
-        # mean and std to properly compute the reward
-        self.mean = mean
-        self.std = std
-
         self.gamma = 0.99
 
         self.loss_env = nn.MSELoss()
 
-    def forward(self, x, storage, netconsumption):
+    def forward(self, x, storage, past_netconsumption):
         # apply autoregressive model
         futur_state = self.world_model(x) # return (batch_size, nb_building, lookfuture, output_size)
 
         # we predict the action
-        action = self.action_model(futur_state.detach(), storage, netconsumption) # return (batch_size, nb_building, lookfuture, 1)
+        action = self.action_model(futur_state.detach(), storage, past_netconsumption) # return (batch_size, nb_building, lookfuture, 1)
 
         return action, futur_state
 
@@ -188,58 +184,70 @@ class ModelCityLearnOptim(pl.LightningModule):
         # here we should generate a random storage value
         storage_random = torch.rand((x.shape[0], nb_building))
 
-        # we denormalize the futur state using the mean and std of the training set
-        std_torch = torch.tensor(self.std).float().unsqueeze(0).unsqueeze(0)
-        mean_torch = torch.tensor(self.mean).float().unsqueeze(0).unsqueeze(0)
-
-        x_unnormalize = x * std_torch + mean_torch
-
         net_demand_old_norm = x[:, :, -1,  non_shiftable_load_idx] - x[:, :, -1, solar_generation_idx] 
-
+        
         # we predict the action
         action, futur_state = self(x.float(), storage_random, net_demand_old_norm)
 
-        # we get denormalize net_demand_old_norm using x_unnormalize
-        net_demand_old_denorm = x_unnormalize[:, :, -1,  non_shiftable_load_idx] - x_unnormalize[:, :, -1, solar_generation_idx]
-
         # we compute the loss
         loss_env = self.loss_env(y.float(), futur_state)
+
 
         # loss for the first step and the 5th step
         loss_env_1 = self.loss_env(y[:, :, 0, :], futur_state[:, :, 0, :])
         loss_env_5 = self.loss_env(y[:, :, 4, :], futur_state[:, :, 4, :])
 
         # we compute the reward
-        loss_reward_demand, loss_reward_grid = self.loss_reward(action, futur_state.detach(), storage_random, net_demand_old_denorm)
-        loss_reward = loss_reward_demand + loss_reward_grid/10
+        loss_reward_price, loss_reward_emission, loss_reward_grid = self.loss_reward(action, futur_state.detach(), storage_random, net_demand_old_norm, y)
 
-        return loss_env, loss_env_1, loss_env_5, loss_reward
+        return loss_env, loss_env_1, loss_env_5, loss_reward_price, loss_reward_emission, loss_reward_grid
 
     def training_step(self, batch, batch_idx):
 
-        loss_env, loss_env_1, loss_env_5, loss_reward = self.step(batch, batch_idx)
+        loss_env, loss_env_1, loss_env_5, loss_reward_price, loss_reward_emission, loss_reward_grid = self.step(batch, batch_idx)
 
-        self.log('train_loss_reward', loss_reward)
+        loss_reward_price, loss_reward_emission, loss_reward_grid = self.normalize_rewards(loss_reward_price, loss_reward_emission, loss_reward_grid)
+
+        self.log('train_loss_reward_emission', loss_reward_emission)
+        self.log('train_loss_reward_price', loss_reward_price)
+        self.log('train_loss_reward_grid', loss_reward_grid)
 
         # we log the two reward
         self.log('train_loss_env', loss_env)
         self.log('train_loss_env_1', loss_env_1)
         self.log('train_loss_env_5', loss_env_5)
 
-        return loss_env + loss_reward
+        return self.cost_definition(loss_env, loss_reward_price, loss_reward_emission, loss_reward_grid)
 
     def validation_step(self, batch, batch_idx):
 
-        loss_env, loss_env_1, loss_env_5, loss_reward = self.step(batch, batch_idx)
+        loss_env, loss_env_1, loss_env_5, loss_reward_price, loss_reward_emission, loss_reward_grid = self.step(batch, batch_idx)
 
-        self.log('val_loss_reward', loss_reward)
+        loss_reward_price, loss_reward_emission, loss_reward_grid = self.normalize_rewards(loss_reward_price, loss_reward_emission, loss_reward_grid)
+
+        self.log('val_loss_reward_emission', loss_reward_emission)
+        self.log('val_loss_reward_price', loss_reward_price)
+        self.log('val_loss_reward_grid', loss_reward_grid)
 
         # we log the two reward        
         self.log('val_loss_env', loss_env)
         self.log('val_loss_env_1', loss_env_1)
         self.log('val_loss_env_5', loss_env_5)
 
-        return loss_env + loss_reward
+        return self.cost_definition(loss_env, loss_reward_price, loss_reward_emission, loss_reward_grid)
+
+
+    def cost_definition(self, loss_env, loss_reward_price, loss_reward_emission, loss_reward_grid):
+        return loss_env + loss_reward_price + loss_reward_emission #+ loss_reward_grid
+
+    def normalize_rewards(self, loss_reward_price, loss_reward_emission, loss_reward_grid):
+        # we normalize the reward
+        loss_reward_price = loss_reward_price
+        loss_reward_emission = loss_reward_emission*2
+        loss_reward_grid = loss_reward_grid/10
+
+        return loss_reward_price, loss_reward_emission, loss_reward_grid
+
 
     def configure_optimizers(self):
         # REQUIRED
@@ -247,7 +255,7 @@ class ModelCityLearnOptim(pl.LightningModule):
         # (LBFGS it is automatically supported, no need for closure function)
         return torch.optim.Adam(self.parameters(), lr=1e-3)
 
-    def loss_reward(self, action, futur_state, storage_random, net_demand_old):
+    def loss_reward(self, action, futur_state, storage_random, net_demand_old, y):
 
         # get nb_building
         nb_building = futur_state.shape[1]
@@ -257,30 +265,26 @@ class ModelCityLearnOptim(pl.LightningModule):
         storage = storage_random
 
         # init the reward array of shape (batch_size, 1)
-        reward_tot = torch.zeros(action.shape[0], nb_building)
+        reward_emission = torch.zeros(action.shape[0], nb_building)
+        reward_price = torch.zeros(action.shape[0], nb_building)
 
         reward_grid = torch.zeros(action.shape[0],)
-
-        # we denormalize the futur state using the mean and std of the training set
-        std_torch = torch.tensor(self.std).float().unsqueeze(0).unsqueeze(0)
-        mean_torch = torch.tensor(self.mean).float().unsqueeze(0).unsqueeze(0)
-
-        futur_state = futur_state * std_torch + mean_torch
 
         # we compute the reward
         for i in range(self.lookforward):
             # we compute the reward
 
-            reward, storage, reward_price, reward_emission, net_demand_new = self.simulation_one_step(futur_state[:, :, i, :],
+            reward, storage, reward_price, reward_emission, net_demand_new = self.simulation_one_step(y[:, :, i, :],
                                                             action[:, :, i, 0], storage)
 
             # compute grid reward from net demand old and new
             reward_grid += torch.abs(net_demand_old.sum(axis=1) - net_demand_new.sum(axis=1))
-            reward_tot = reward_tot + reward 
+            reward_emission = reward_emission + reward_emission 
+            reward_price = reward_price + reward_price
             # update the net demand
             net_demand_old = net_demand_new
 
-        return torch.mean(reward_tot), torch.mean(reward_grid)
+        return torch.mean(reward_price), torch.mean(reward_emission), torch.mean(reward_grid)
 
     def simulation_one_step(self, futur_state, action, storage):
 
@@ -316,7 +320,7 @@ class ModelCityLearnOptim(pl.LightningModule):
         electrical_soc_new = torch.where(action >= 0, storage + action*eff, storage + action/eff)
         electrical_soc_new = torch.clamp(electrical_soc_new, 0, 1)
 
-        return reward_electricity_price + reward_carbon_intensity*1.2, electrical_soc_new, reward_electricity_price, reward_carbon_intensity, net_emission
+        return reward_electricity_price + reward_carbon_intensity, electrical_soc_new, reward_electricity_price, reward_carbon_intensity, net_emission
 
 # we define the dataset
 class DatasetCityLearn(torch.utils.data.Dataset):
@@ -350,8 +354,6 @@ class DatasetCityLearn(torch.utils.data.Dataset):
 
         x_tot = np.concatenate(np.expand_dims(x_tot, axis = 0))
         y_tot = np.concatenate(np.expand_dims(y_tot, axis = 0))
-
-        
 
         # convert to np.float32
         x_tot = x_tot.astype(np.float32)

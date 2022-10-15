@@ -162,6 +162,10 @@ if __name__ == "__main__":
     # data generation
     data = env_run_without_action()
 
+    # we only normalize month and hour
+    data['hour'] = data['hour']/24
+    data['month'] = data['month']/12
+
     # save the data into the data_histo folder into parquet format
     data.to_parquet("data_histo/data.parquet")
 
