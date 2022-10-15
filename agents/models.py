@@ -166,8 +166,15 @@ class ModelCityLearnOptim(pl.LightningModule):
 
         self.loss_env = nn.MSELoss()
 
+        self.std = torch.tensor([0.889005, 1.017158, 0.117803, 0.035369, 0.288406, 0.287340])
+        self.std = self.std.unsqueeze(0).unsqueeze(0).unsqueeze(0)
+
+
+
     def forward(self, x, storage, past_netconsumption):
-        # apply autoregressive model
+        
+        x = x / self.std # scale the input
+
         futur_state = self.world_model(x) # return (batch_size, nb_building, lookfuture, output_size)
 
         # we predict the action

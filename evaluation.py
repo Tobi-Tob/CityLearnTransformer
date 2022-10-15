@@ -179,7 +179,10 @@ def plot_action_list(action_list, state_list):
 
     print(df.head())
 
+
     # now we can look at the action with respect to hour
+    # define figure
+    fig, ax = plt.subplots(1, 1, figsize=(70, 10))
     plot = df.groupby("hour")["actions"].mean().plot()
     fig = plot.get_figure()
     # we save the plot in the results_worldmodel folder
@@ -202,26 +205,25 @@ def compute_performance_validation(model, dataset_test):
     action_done_list = []
     state_list = []
 
+    net_demand_old = torch.zeros((1, 5))
+
     # adding torch no grad
     with torch.no_grad():
         
         for batch_idx, (x, y) in enumerate(dataloader_val):
 
-            net_demand_old = x[:, :, -1,  non_shiftable_load_idx] - x[:, :, -1, solar_generation_idx]
-
+             
             action, futur_state = model(x.float(), storage_init, net_demand_old)
             
             reward, storage, reward_price, reward_emission, net_demand_new = model.simulation_one_step(y[:, :, 0, :], action[:, :, 0, 0], storage_init)
             reward_price_tot += reward_price
             reward_emission_tot += reward_emission
 
-            net_demand_old = x[:, :, -1,  non_shiftable_load_idx] - x[:, :, -1, solar_generation_idx] + action_previous*6.4
-
             reward_grid_tot += torch.abs(net_demand_old.sum(axis=1) - net_demand_new.sum(axis=1))
 
-            #print(reward)
             storage_init = storage
-            action_previous = action[:, :, 0, 0]
+
+            net_demand_old = net_demand_new
 
             # append action[:, :, 0, 0] to action_done_list in list format
             action_done_list.append(action[:, :, 0, 0])
@@ -272,6 +274,8 @@ def evaluation_worldmodel(path_dataset):
 
     data.reset_index(inplace=True)
 
+    print(data[features_to_forecast].describe())
+
 
     data_list = rework_dataset(data)
 
@@ -295,7 +299,6 @@ def evaluation_worldmodel(path_dataset):
     # model testing
     test_model(model, dataloader_val)
 
-    plot_performance_validation(model, dataset_val)
 
     # TODO compute model performance on real data (reward performance)
     rewards = compute_performance_validation(model, dataset_val)
@@ -313,6 +316,9 @@ def evaluation_worldmodel(path_dataset):
     performance["ratio_grid"] = ratio_grid
 
     print(performance)
+
+    plot_performance_validation(model, dataset_val)
+
 
     # we convert every value to float
     for key in performance.keys():

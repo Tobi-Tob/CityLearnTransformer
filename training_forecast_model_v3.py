@@ -105,11 +105,10 @@ def train_worldmodel(path_dataset):
     model = ModelCityLearnOptim(len(features_to_forecast), hidden_feature, len(features_to_forecast), lookback, lookfuture)
 
     # load model weight from previous training (to accelerate training)
-    model.load_state_dict(torch.load("models_checkpoint/model_world_v3.pt"))
+    # model.load_state_dict(torch.load("models_checkpoint/model_world_v3.pt"))
 
     # model testing
     test_model(model, dataloader_val)
-    
     
     train = True
 
@@ -121,7 +120,7 @@ def train_worldmodel(path_dataset):
         wandb_logger = WandbLogger(project='citylearn', entity='forbu14')
 
         # we define the trainer
-        trainer = pl.Trainer(max_epochs=2, logger=wandb_logger)
+        trainer = pl.Trainer(max_epochs=20, logger=wandb_logger)
 
         # we train the model
         trainer.fit(model, dataloader, dataloader_val)
