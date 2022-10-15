@@ -80,14 +80,10 @@ class OrderEnforcingAgent:
         self.num_buildings = None
         self.action_space = None
 
-        # now we load mean and std from models_checkpoint/mean_std.pkl
-        with open("models_checkpoint/mean_std.pkl", "rb") as f:
-            self.mean, self.std = pickle.load(f)
-
 
         # here we load the model
         self.model = ModelCityLearnOptim(len(features_to_forecast), hidden_feature,
-                        len(features_to_forecast), lookback, lookfuture, self.mean, self.std)
+                        len(features_to_forecast), lookback, lookfuture)
 
         self.model.load_state_dict(torch.load("models_checkpoint/model_world_v3.pt"))
 
@@ -146,6 +142,17 @@ class OrderEnforcingAgent:
 
         return storage_value
 
+    def get_net_demand(self, observation):
+        """
+        This function get the net demand
+        """
+        net_demand = torch.zeros((self.num_buildings, 1))
+
+        for i in range(self.num_buildings):
+            net_demand[i] = observation[i][str_to_int_mapping["net_electricity_consumption"]]
+
+        return net_demand
+
     def compute_action(self, observation):
         """
         Inputs: 
@@ -174,24 +181,23 @@ class OrderEnforcingAgent:
         obs_history = self.retrieve_observation_history()
         obs_history = obs_history.unsqueeze(0)
 
-        # we get the two other variables net_demand_old and storage value
-        net_demand_old = obs_history[:, :, -1,  non_shiftable_load_idx] - obs_history[:, :, -1, solar_generation_idx] 
-
         # we get the storage value from the last observation
         storage_value = self.get_storage_value(observation)
 
+        # we get the net demand from the last observation
+        net_demand = self.get_net_demand(observation)
+
         with torch.no_grad():
-            # here we get the action from the model
-            
-            # we normalize obs_history
-            std_torch = torch.tensor(self.std).float().unsqueeze(0).unsqueeze(0).unsqueeze(0)
-            mean_torch = torch.tensor(self.mean).float().unsqueeze(0).unsqueeze(0).unsqueeze(0)
+ 
+            # normalize hour and month
+            obs_history[:, :, :, hour_idx] = obs_history[:, :, :, hour_idx] / 24
+            obs_history[:, :, :, month_idx] = obs_history[:, :, :, month_idx] / 12
 
-            obs_history = (obs_history - mean_torch) / std_torch
+            # reshape storage value and net demand
+            storage_value = storage_value.squeeze(1).unsqueeze(0)
+            net_demand = net_demand.squeeze(1).unsqueeze(0)
 
-            net_demand_old = obs_history[:, :, -1,  non_shiftable_load_idx] - obs_history[:, :, -1, solar_generation_idx] 
-
-            actions, futur_state = self.model(obs_history, net_demand_old, storage_value)
+            actions, futur_state = self.model(obs_history, net_demand, storage_value)
 
             actions = actions[:, :, 0, 0]
 
