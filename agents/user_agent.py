@@ -1,5 +1,5 @@
-from agents.random_agent import RandomAgent
-from agents.rbc_agent import BasicRBCAgent
+from random_agent import RandomAgent
+from rbc_agent import BasicRBCAgent
 
 import pickle
 

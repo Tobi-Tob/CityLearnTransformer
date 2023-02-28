@@ -150,7 +150,7 @@ The `aicrowd.json` of each submission should contain the following content:
 
 ```json
 {
-  "challenge_id": "neurips-2022-citylearn-challenge",
+  "challenge_id": "neurips",
   "authors": ["your-aicrowd-username"],
   "description": "(optional) description about your awesome agent",
 }

@@ -11,7 +11,7 @@ import pandas as pd
 import os
 
 from collections import deque
-import argparse 
+import argparse
 import random
 # import logger
 import logging
@@ -24,7 +24,6 @@ import pytorch_lightning as pl
 
 import pickle
 
-import wandb
 from pytorch_lightning.loggers import WandbLogger
 
 import json
@@ -34,14 +33,14 @@ lookback = 5
 lookfuture = 20
 
 features_to_forecast = ['non_shiftable_load', 'solar_generation', 'electricity_pricing', 'carbon_intensity',
-                                                             'hour', 'month']
+                        'hour', 'month']
 
 hidden_feature = 64
 
 non_shiftable_load_idx = features_to_forecast.index("non_shiftable_load")
 solar_generation_idx = features_to_forecast.index("solar_generation")
 electricity_pricing_idx = features_to_forecast.index("electricity_pricing")
-carbon_intensity_idx = features_to_forecast.index("carbon_intensity") 
+carbon_intensity_idx = features_to_forecast.index("carbon_intensity")
 
 
 def rework_dataset(data):
@@ -50,20 +49,19 @@ def rework_dataset(data):
     Return a list of dataframe of size (nb_building, 8760, nb_feature)
     """
     data_list = []
-    
+
     data_list = list(data.groupby("building_id"))
 
     data_list = [data[1].drop("building_id", axis=1) for data in data_list]
 
     return data_list
 
-def test_model(model, test_loader):
 
-    #model.eval()
+def test_model(model, test_loader):
+    # model.eval()
     with torch.no_grad():
         for batch_idx, (x, y) in enumerate(test_loader):
-
-            storage_random = torch.rand((x.shape[0],5))
+            storage_random = torch.rand((x.shape[0], 5))
 
             net_comsumption = torch.randn((x.shape[0], 5))
 
@@ -78,7 +76,8 @@ def test_model(model, test_loader):
 
     # we try one validation step
     model.validation_step((x, y), 0)
-    #exit()
+    # exit()
+
 
 def plot_performance_validation(model, dataset_test):
     """
@@ -98,7 +97,6 @@ def plot_performance_validation(model, dataset_test):
     env_true_5 = {}
 
     for idx, var in enumerate(features_to_forecast):
-        
         env_pred_1[var] = []
         env_true_1[var] = []
 
@@ -106,20 +104,19 @@ def plot_performance_validation(model, dataset_test):
         env_true_5[var] = []
 
     with torch.no_grad():
-        
+
         for batch_idx, (x, y) in enumerate(dataloader_val):
 
             # get nb_building
             nb_building = x.shape[1]
 
-            net_demand_old = x[:, :, -1,  non_shiftable_load_idx] - x[:, :, -1, solar_generation_idx] 
+            net_demand_old = x[:, :, -1, non_shiftable_load_idx] - x[:, :, -1, solar_generation_idx]
 
             storage_random = torch.rand((x.shape[0], nb_building))
             action, futur_state = model(x.float(), storage_random, net_demand_old)
 
             # we register the prediction and the ground truth for 2 horizon (1 and 5)
             for idx, var in enumerate(features_to_forecast):
-
                 env_pred_1[var].append(futur_state[0, 0, 0, idx].item())
                 env_true_1[var].append(y[0, 0, 0, idx].item())
 
@@ -132,7 +129,6 @@ def plot_performance_validation(model, dataset_test):
 
     # we plot the results
     for idx, var in enumerate(features_to_forecast):
-            
         plt.figure(figsize=(100, 10))
         plt.plot(env_pred_1[var], label="pred_1")
         plt.plot(env_true_1[var], label="true_1")
@@ -157,7 +153,6 @@ def plot_performance_validation(model, dataset_test):
 
 
 def plot_action_list(action_list, state_list):
-    
     # first we concatenate the action list to get a proper tensor
     action_list = torch.cat(action_list, dim=0)
 
@@ -179,7 +174,6 @@ def plot_action_list(action_list, state_list):
 
     print(df.head())
 
-
     # now we can look at the action with respect to hour
     # define figure
     fig, ax = plt.subplots(1, 1, figsize=(70, 10))
@@ -187,9 +181,9 @@ def plot_action_list(action_list, state_list):
     fig = plot.get_figure()
     # we save the plot in the results_worldmodel folder
     fig.savefig("results_worldmodel/action_hour.png")
-    
-def compute_performance_validation(model, dataset_test):
 
+
+def compute_performance_validation(model, dataset_test):
     dataloader_val = torch.utils.data.DataLoader(dataset_test, batch_size=1, shuffle=False)
 
     model.eval()
@@ -209,13 +203,13 @@ def compute_performance_validation(model, dataset_test):
 
     # adding torch no grad
     with torch.no_grad():
-        
-        for batch_idx, (x, y) in enumerate(dataloader_val):
 
-             
+        for batch_idx, (x, y) in enumerate(dataloader_val):
             action, futur_state = model(x.float(), storage_init, net_demand_old)
-            
-            reward, storage, reward_price, reward_emission, net_demand_new = model.simulation_one_step(y[:, :, 0, :], action[:, :, 0, 0], storage_init)
+
+            reward, storage, reward_price, reward_emission, net_demand_new = model.simulation_one_step(y[:, :, 0, :],
+                                                                                                       action[:, :, 0,
+                                                                                                       0], storage_init)
             reward_price_tot += reward_price
             reward_emission_tot += reward_emission
 
@@ -228,7 +222,6 @@ def compute_performance_validation(model, dataset_test):
             # append action[:, :, 0, 0] to action_done_list in list format
             action_done_list.append(action[:, :, 0, 0])
             state_list.append(x[:, :, -1, :])
-
 
         print("reward_price", reward_price_tot)
         print("reward_emission", reward_emission_tot)
@@ -244,14 +237,15 @@ def compute_performance_validation(model, dataset_test):
         storage_init = torch.zeros((1, 5))
 
         for batch_idx, (x, y) in enumerate(dataloader_val):
-
             action = torch.zeros((1, 5))
 
-            net_demand_old = x[:, :, -1,  non_shiftable_load_idx] - x[:, :, -1, solar_generation_idx] 
+            net_demand_old = x[:, :, -1, non_shiftable_load_idx] - x[:, :, -1, solar_generation_idx]
 
             # we compute the REAL reward and storage_init TODO
             # we apply the action to the storage
-            reward, storage, reward_price, reward_emission, net_demand_new = model.simulation_one_step(y[:, :, 0, :], action, storage_init)
+            reward, storage, reward_price, reward_emission, net_demand_new = model.simulation_one_step(y[:, :, 0, :],
+                                                                                                       action,
+                                                                                                       storage_init)
             reward_price_tot_baseline += reward_price
             reward_emission_tot_baseline += reward_emission
             reward_grid_tot_baseline += torch.abs(net_demand_old.sum(axis=1) - net_demand_new.sum(axis=1))
@@ -262,20 +256,20 @@ def compute_performance_validation(model, dataset_test):
         print("reward_emission_baseline", reward_emission_tot_baseline)
         print("reward_grid_baseline", reward_grid_tot_baseline)
 
-
-    return {"reward_price": reward_price_tot.mean(), "reward_emission": reward_emission_tot.mean(), "reward_grid": reward_grid_tot.mean(),
-                         "reward_price_baseline": reward_price_tot_baseline.mean(), "reward_emission_baseline": reward_emission_tot_baseline.mean(), "reward_grid_baseline": reward_grid_tot_baseline.mean()}
+    return {"reward_price": reward_price_tot.mean(), "reward_emission": reward_emission_tot.mean(),
+            "reward_grid": reward_grid_tot.mean(),
+            "reward_price_baseline": reward_price_tot_baseline.mean(),
+            "reward_emission_baseline": reward_emission_tot_baseline.mean(),
+            "reward_grid_baseline": reward_grid_tot_baseline.mean()}
 
 
 def evaluation_worldmodel(path_dataset):
-
     # we load the dataset
     data = pd.read_parquet(path_dataset)
 
     data.reset_index(inplace=True)
 
     print(data[features_to_forecast].describe())
-
 
     data_list = rework_dataset(data)
 
@@ -291,7 +285,8 @@ def evaluation_worldmodel(path_dataset):
     dataloader_val = torch.utils.data.DataLoader(dataset_val, batch_size=32, shuffle=False)
 
     # we define the model
-    model = ModelCityLearnOptim(len(features_to_forecast), hidden_feature, len(features_to_forecast), lookback, lookfuture)
+    model = ModelCityLearnOptim(len(features_to_forecast), hidden_feature, len(features_to_forecast), lookback,
+                                lookfuture)
 
     # load model from models_checkpoint/model_world.pt
     model.load_state_dict(torch.load("models/model_world_v3.pt"))
@@ -299,13 +294,12 @@ def evaluation_worldmodel(path_dataset):
     # model testing
     test_model(model, dataloader_val)
 
-
     # TODO compute model performance on real data (reward performance)
     rewards = compute_performance_validation(model, dataset_val)
 
     performance = rewards
 
-    #we compute the different ratios
+    # we compute the different ratios
     ratio_price = performance["reward_price"] / performance["reward_price_baseline"]
     ratio_emission = performance["reward_emission"] / performance["reward_emission_baseline"]
     ratio_grid = performance["reward_grid"] / performance["reward_grid_baseline"]
@@ -319,7 +313,6 @@ def evaluation_worldmodel(path_dataset):
 
     plot_performance_validation(model, dataset_val)
 
-
     # we convert every value to float
     for key in performance.keys():
         performance[key] = float(performance[key])
@@ -328,6 +321,6 @@ def evaluation_worldmodel(path_dataset):
     with open('metrics/performance_v3.json', 'w') as fp:
         json.dump(performance, fp)
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     evaluation_worldmodel("data_histo/data.parquet")

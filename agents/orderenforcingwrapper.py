@@ -11,45 +11,44 @@ import pickle
 
 def dict_to_action_space(aspace_dict):
     return Box(
-                low = aspace_dict["low"],
-                high = aspace_dict["high"],
-                dtype = aspace_dict["dtype"],
-              )
+        low=aspace_dict["low"],
+        high=aspace_dict["high"],
+        dtype=aspace_dict["dtype"],
+    )
 
 
 str_to_int_mapping = {
-    "month"  :   0,
-"day_type"  :    1,
-"hour"  :    2,
-"outdoor_dry_bulb_temperature"  :  3,
-"outdoor_dry_bulb_temperature_predicted_6h"  :    4,
-"outdoor_dry_bulb_temperature_predicted_12h"  :    5,
-"outdoor_dry_bulb_temperature_predicted_24h"  :    6,
-"outdoor_relative_humidity"  :   7,
-"outdoor_relative_humidity_predicted_6h"  :   8,
-"outdoor_relative_humidity_predicted_12h"  :    9,
-"outdoor_relative_humidity_predicted_24h"  :  10,
-"diffuse_solar_irradiance"  :    11,
-"diffuse_solar_irradiance_predicted_6h"  :   12,
-"diffuse_solar_irradiance_predicted_12h"  :   13,
-"diffuse_solar_irradiance_predicted_24h"  :   14,
-"direct_solar_irradiance"  : 15,
-"direct_solar_irradiance_predicted_6h"  :   16,
-"direct_solar_irradiance_predicted_12h"  :  17,
-"direct_solar_irradiance_predicted_24h"  :  18,
-"carbon_intensity"  :  19,
-"non_shiftable_load"  :  20,
-"solar_generation"  :  21,
-"electrical_storage_soc"  : 22,
-"net_electricity_consumption"  :  23,
-"electricity_pricing"  :   24,
-"electricity_pricing_predicted_6h"  : 25,
-"electricity_pricing_predicted_12h"  :  26,
-"electricity_pricing_predicted_24h"  : 27,
+    "month": 0,
+    "day_type": 1,
+    "hour": 2,
+    "outdoor_dry_bulb_temperature": 3,
+    "outdoor_dry_bulb_temperature_predicted_6h": 4,
+    "outdoor_dry_bulb_temperature_predicted_12h": 5,
+    "outdoor_dry_bulb_temperature_predicted_24h": 6,
+    "outdoor_relative_humidity": 7,
+    "outdoor_relative_humidity_predicted_6h": 8,
+    "outdoor_relative_humidity_predicted_12h": 9,
+    "outdoor_relative_humidity_predicted_24h": 10,
+    "diffuse_solar_irradiance": 11,  # Sonneneinstrahlung (aus verschiedenen Richtungen gestreut durch Nebel/Wolken)
+    "diffuse_solar_irradiance_predicted_6h": 12,
+    "diffuse_solar_irradiance_predicted_12h": 13,
+    "diffuse_solar_irradiance_predicted_24h": 14,
+    "direct_solar_irradiance": 15,  # Sonneneinstrahlung (direkt)
+    "direct_solar_irradiance_predicted_6h": 16,
+    "direct_solar_irradiance_predicted_12h": 17,
+    "direct_solar_irradiance_predicted_24h": 18,
+    "carbon_intensity": 19,  # current carbon intensity of the power grid
+    "non_shiftable_load": 20,  # electricity currently consumed by electrical devices in kWh
+    "solar_generation": 21,
+    "electrical_storage_soc": 22,  # state of charge of the electrical storage device
+    "net_electricity_consumption": 23,  # current net electricity consumption of the building
+    "electricity_pricing": 24,
+    "electricity_pricing_predicted_6h": 25,
+    "electricity_pricing_predicted_12h": 26,
+    "electricity_pricing_predicted_24h": 27,
 }
 
 int_to_str_mapping = {v: k for k, v in str_to_int_mapping.items()}
-
 
 import json
 from .models import ModelCityLearn, ModelAfterPrediction, ModelCityLearnOptim, DatasetCityLearn
@@ -58,39 +57,38 @@ lookback = 5
 lookfuture = 20
 
 features_to_forecast = ['non_shiftable_load', 'solar_generation', 'electricity_pricing', 'carbon_intensity',
-                                                             'hour', 'month']
+                        'hour', 'month']
 
 hidden_feature = 64
 
 non_shiftable_load_idx = features_to_forecast.index("non_shiftable_load")
 solar_generation_idx = features_to_forecast.index("solar_generation")
 electricity_pricing_idx = features_to_forecast.index("electricity_pricing")
-carbon_intensity_idx = features_to_forecast.index("carbon_intensity") 
+carbon_intensity_idx = features_to_forecast.index("carbon_intensity")
 hour_idx = features_to_forecast.index("hour")
 month_idx = features_to_forecast.index("month")
 
 features_index = [str_to_int_mapping[feature] for feature in features_to_forecast]
+
 
 class OrderEnforcingAgent:
     """
     Emulates order enforcing wrapper in Pettingzoo for easy integration
     Calls each agent step with agent in a loop and returns the action
     """
+
     def __init__(self):
         self.num_buildings = None
         self.action_space = None
 
-
         # here we load the model
         self.model = ModelCityLearnOptim(len(features_to_forecast), hidden_feature,
-                        len(features_to_forecast), lookback, lookfuture)
+                                         len(features_to_forecast), lookback, lookfuture)
 
         self.model.load_state_dict(torch.load("models_checkpoint/model_world_v3.pt"))
 
-
-    
     def register_reset(self, observation):
-        """Get the first observation after env.reset, return action""" 
+        """Get the first observation after env.reset, return action"""
         action_space = observation["action_space"]
         self.action_space = [dict_to_action_space(asd) for asd in action_space]
         obs = observation["observation"]
@@ -100,13 +98,12 @@ class OrderEnforcingAgent:
         self.observation_history = [deque(maxlen=lookback) for _ in range(self.num_buildings)]
 
         return self.compute_action(obs)
-    
+
     def raise_aicrowd_error(self, msg):
         raise NameError(msg)
 
     def update_observation_history(self, observation):
         for i in range(self.num_buildings):
-
             # we rework observation[i] to get a list of features_to_forecast
             obs_building = [observation[i][str_to_int_mapping[feature]] for feature in features_to_forecast]
 
@@ -122,7 +119,6 @@ class OrderEnforcingAgent:
         obs_history = torch.zeros((self.num_buildings, lookback, len(features_to_forecast)))
 
         for i in range(self.num_buildings):
-    
             # get an obs_lookback_building by retrieving the right index of
             # self.observation_history[i][j] corresponding to the features_to_forecast
             obs_lookback_building = list(self.observation_history[i])
@@ -168,9 +164,11 @@ class OrderEnforcingAgent:
 
         """
         assert self.num_buildings is not None
-        rewards = UserReward(agent_count=len(observation),observation=observation).calculate()
+        # TL: not used
+        # rewards = UserReward(agent_count=len(observation), observation=observation).calculate()
 
         # here we update the observation list
+        # TL: observation_history array von num_buildings (5) Listen
         self.update_observation_history(observation)
 
         # we check if we have enough observation to make a prediction
@@ -188,7 +186,6 @@ class OrderEnforcingAgent:
         net_demand = self.get_net_demand(observation)
 
         with torch.no_grad():
- 
             # normalize hour and month
             obs_history[:, :, :, hour_idx] = obs_history[:, :, :, hour_idx] / 24
             obs_history[:, :, :, month_idx] = obs_history[:, :, :, month_idx] / 12
