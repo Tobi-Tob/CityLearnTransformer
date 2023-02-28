@@ -11,7 +11,7 @@ class MyDecisionTransformer:
         # print("Loading Model Info:", info)
 
     # Function that gets an action from the model using autoregressive prediction with a window of the previous 20
-    # timesteps.
+    # time steps.
     def get_action(self, states, actions, rewards, returns_to_go, timesteps):
         # This implementation does not condition on past rewards
 

@@ -24,8 +24,8 @@ list(
 
 class Constants:
     file_to_save = "s_non.pkl"
-    sequence_length = 800
-    episodes = 10
+    sequence_length = 100
+    episodes = 1
     state_dim = 28  # size of state space
     action_dim = 1  # size of action space
     schema_path = './data/citylearn_challenge_2022_phase_1/schema.json'

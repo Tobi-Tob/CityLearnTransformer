@@ -1,6 +1,20 @@
 import os
 import pickle
 
+'''
+Script is used to visualize structure and dimension of a pickle data file
+Data structure:
+list(
+    dict(
+        "observations": nparray(nparray(np.float32)),
+        "next_observations": nparray(nparray(np.float32)),
+        "actions": nparray(nparray(np.float32)),
+        "rewards": nparray(np.oat32),
+        "terminals": nparray(np.bool_)
+        )
+    )
+'''
+
 if __name__ == '__main__':
 
     file = "s_random.pkl"
@@ -59,7 +73,4 @@ if __name__ == '__main__':
             string_byte = "(" + str(round(file_size / 1e+3)) + " kB)"
         print(file, string_byte)
 
-        #print(data[0]["observations"][0][:3])
-
-
-
+        # print(data[0]["observations"][0][:3])

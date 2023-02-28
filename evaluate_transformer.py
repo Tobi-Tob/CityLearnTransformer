@@ -14,7 +14,7 @@ This file is used to evaluate a decision transformer loaded form https://hugging
 
 
 class Constants:
-    file_to_save = 'evaluate_transformer.txt'
+    file_to_save = 'evaluation_results.txt'
     """Environment Constants"""
     episodes = 1  # amount of environment resets
     state_dim = 28  # size of state space
@@ -209,7 +209,6 @@ def evaluate():
             t += 1
             if num_steps % 100 == 0:
                 print(f"Num Steps: {num_steps}, Num episodes: {episodes_completed}")
-                print(len(target_return_list_of_tensors[4][0]))
 
             if episodes_completed >= Constants.episodes:
                 break
