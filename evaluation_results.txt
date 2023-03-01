@@ -1,10 +1,3 @@
 ==> Model: TobiTob/decision_transformer_2
 Target Return: -2500
 Context Length: 20
-1 [-119.88965736  -87.41950852  -82.79068331  -68.50436222  -73.07353451]
-Total number of steps: 300
-Average Price Cost: 0.72939545947427
-Average Emission Cost: 0.859226902915882
-Average Grid Cost: 0.9441637482099245
-==> 0.8442620368666921
-Total time taken by agent: 13.492759261993342s

@@ -6,8 +6,8 @@ class MyDecisionTransformer:
     def __init__(self, load_from, force_download, device):
 
         # here we load the model
-        self.model, info = DecisionTransformerModel.from_pretrained(load_from, force_download=force_download, output_loading_info=True)
-        self.model = self.model.to(device)
+        model, info = DecisionTransformerModel.from_pretrained(load_from, force_download=force_download, output_loading_info=True)
+        self.model = model.to(device)
         # print("Loading Model Info:", info)
 
     # Function that gets an action from the model using autoregressive prediction with a window of the previous 20

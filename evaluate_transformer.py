@@ -24,7 +24,7 @@ class Constants:
     """Model Constants"""
     load_model = "TobiTob/decision_transformer_2"
     force_download = False
-    device = "cpu"
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     TARGET_RETURN = -2500  # vllt Vector aus 5 Werten
     # mean and std computed from training dataset these are available in the model card for each model.
 
@@ -47,7 +47,8 @@ class Constants:
 def preprocess_states(state_list_of_lists, amount_buildings):
     for bi in range(amount_buildings):
         for si in range(Constants.state_dim):
-            state_list_of_lists[bi][si] = (state_list_of_lists[bi][si] - Constants.state_mean[si]) / Constants.state_std[si]
+            state_list_of_lists[bi][si] = (state_list_of_lists[bi][si] - Constants.state_mean[si]) / \
+                                          Constants.state_std[si]
 
     return state_list_of_lists
 
@@ -62,6 +63,10 @@ def evaluate():
 
     agent = MyDecisionTransformer(load_from=Constants.load_model, force_download=Constants.force_download,
                                   device=Constants.device)
+    print("Using device:", Constants.device)
+    start_timestep = env.schema['simulation_start_time_step']
+    end_timestep = env.schema['simulation_end_time_step']
+    print("Environment simulation from", start_timestep, "to", end_timestep)
 
     context_length = agent.model.config.max_length
     amount_buildings = len(env.buildings)
@@ -118,7 +123,8 @@ def evaluate():
             next_actions = []
             for bi in range(amount_buildings):
                 action_list_of_tensors[bi] = torch.cat(
-                    [action_list_of_tensors[bi], torch.zeros((1, Constants.action_dim), device=Constants.device)], dim=0)
+                    [action_list_of_tensors[bi], torch.zeros((1, Constants.action_dim), device=Constants.device)],
+                    dim=0)
                 reward_list_of_tensors[bi] = torch.cat(
                     [reward_list_of_tensors[bi], torch.zeros(1, device=Constants.device)])
 
@@ -167,8 +173,9 @@ def evaluate():
                 for bi in range(amount_buildings):
                     state_bi = torch.from_numpy(np.array(state_list_of_lists[bi])).reshape(1, Constants.state_dim).to(
                         device=Constants.device, dtype=torch.float32)
-                    target_return_bi = torch.tensor(target_return, device=Constants.device, dtype=torch.float32).reshape(1,
-                                                                                                                         1)
+                    target_return_bi = torch.tensor(target_return, device=Constants.device,
+                                                    dtype=torch.float32).reshape(1,
+                                                                                 1)
                     action_bi = torch.zeros((0, Constants.action_dim), device=Constants.device, dtype=torch.float32)
                     reward_bi = torch.zeros(0, device=Constants.device, dtype=torch.float32)
 
@@ -182,8 +189,9 @@ def evaluate():
             else:
                 # Process data for next step
                 for bi in range(amount_buildings):
-                    cur_state = torch.from_numpy(np.array(state_list_of_lists[bi])).to(device=Constants.device).reshape(1,
-                                                                                                                        Constants.state_dim)
+                    cur_state = torch.from_numpy(np.array(state_list_of_lists[bi])).to(device=Constants.device).reshape(
+                        1,
+                        Constants.state_dim)
                     state_list_of_tensors[bi] = torch.cat([state_list_of_tensors[bi], cur_state], dim=0)
                     reward_list_of_tensors[bi][-1] = reward_list_of_lists[bi]
 
@@ -193,8 +201,9 @@ def evaluate():
 
                     episode_return[bi] += reward_list_of_lists[bi]
 
-                timesteps = torch.cat([timesteps, torch.ones((1, 1), device=Constants.device, dtype=torch.long) * (t + 1)],
-                                      dim=1)
+                timesteps = torch.cat(
+                    [timesteps, torch.ones((1, 1), device=Constants.device, dtype=torch.long) * (t + 1)],
+                    dim=1)
 
                 if timesteps.size(dim=1) > context_length:
                     # Store only the last values according to context_length
@@ -223,7 +232,7 @@ def evaluate():
             print("Average Price Cost:", price_cost)
             print("Average Emission Cost:", emission_cost)
             print("Average Grid Cost:", grid_cost)
-            print("==>", (price_cost+emission_cost+grid_cost)/3)
+            print("==>", (price_cost + emission_cost + grid_cost) / 3)
         print(f"Total time taken by agent: {agent_time_elapsed}s")
         sys.stdout = original_stdout
         print("Evaluation saved in:", str(pathlib.Path(__file__).parent.resolve()) + '/' + Constants.file_to_save)
