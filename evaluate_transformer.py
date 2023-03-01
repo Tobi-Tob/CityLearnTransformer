@@ -65,9 +65,6 @@ def evaluate():
     agent = MyDecisionTransformer(load_from=Constants.load_model, force_download=Constants.force_download,
                                   device=Constants.device)
     print("Using device:", Constants.device)
-    start_timestep = env.schema['simulation_start_time_step']
-    end_timestep = env.schema['simulation_end_time_step']
-    print("Environment simulation from", start_timestep, "to", end_timestep)
 
     context_length = agent.model.config.max_length
     amount_buildings = len(env.buildings)
@@ -117,6 +114,9 @@ def evaluate():
         print("==> Model:", Constants.load_model)
         print("Target Return:", Constants.TARGET_RETURN)
         print("Context Length:", context_length)
+        start_timestep = env.schema['simulation_start_time_step']
+        end_timestep = env.schema['simulation_end_time_step']
+        print("Environment simulation from", start_timestep, "to", end_timestep)
         sys.stdout = original_stdout
 
         while True:
