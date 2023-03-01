@@ -24,7 +24,8 @@ class Constants:
     """Model Constants"""
     load_model = "TobiTob/decision_transformer_2"
     force_download = False
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = "cpu"
+    #device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     TARGET_RETURN = -2500  # vllt Vector aus 5 Werten
     # mean and std computed from training dataset these are available in the model card for each model.
 
