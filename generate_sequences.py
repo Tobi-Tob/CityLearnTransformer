@@ -217,17 +217,18 @@ def generate_data():
     total_values = (2 * Constants.state_dim + Constants.action_dim + 2) * length * len(dataset)
     print("Total values to store: ", total_values)
 
+    file_path = "./data/" + Constants.file_to_save
     # create or overwrite pickle file
-    with open(Constants.file_to_save, "wb") as f:
+    with open(file_path, "wb") as f:
         pickle.dump(dataset, f)
 
     print("========================= Writing Completed ============================")
-    file_size = os.stat(Constants.file_to_save).st_size
+    file_size = os.stat(file_path).st_size
     if file_size > 1e+6:
         string_byte = "(" + str(round(file_size / 1e+6)) + " MB)"
     else:
         string_byte = "(" + str(round(file_size / 1e+3)) + " kB)"
-    print("==> Data saved in", Constants.file_to_save, string_byte)
+    print("==> Data saved in", file_path, string_byte)
 
 
 if __name__ == '__main__':

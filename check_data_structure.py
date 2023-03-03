@@ -17,7 +17,7 @@ list(
 
 if __name__ == '__main__':
 
-    file = "s_random.pkl"
+    file = "./data/s_non.pkl"
     with open(file, "rb") as f:
         data = pickle.load(f)
 

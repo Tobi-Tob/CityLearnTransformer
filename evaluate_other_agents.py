@@ -27,8 +27,8 @@ class Constants:
     # agent = RandomAgent()
     # agent = OneActionAgent([0])
     # agent = BasicRBCAgent()
-    agent = BetterRBCAgent()
-    # agent = OrderEnforcingAgent()
+    # agent = BetterRBCAgent()
+    agent = OrderEnforcingAgent()
 
 
 def action_space_to_dict(aspace):
