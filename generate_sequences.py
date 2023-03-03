@@ -2,9 +2,13 @@ import os
 import numpy as np
 import pickle
 import time
+
+from agents.one_action_agent import OneActionAgent
 from agents.orderenforcingwrapper import OrderEnforcingAgent
 from agents.random_agent import RandomAgent
-from citylearn.citylearn import CityLearnEnv
+from agents.rbc_agent import BasicRBCAgent, BetterRBCAgent
+
+from utils import init_environment
 
 """
 This file is used to generate offline data for a decision transformer.
@@ -23,14 +27,20 @@ list(
 
 
 class Constants:
-    file_to_save = "s_random4.pkl"
-    sequence_length = 1
-    episodes = 10
-    state_dim = 28  # size of state space
-    action_dim = 1  # size of action space
-    schema_path = './data/citylearn_challenge_2022_phase_1/schema.json'
+    file_to_save = "s_non.pkl"
+    sequence_length = 24
+    episodes = 3
+    state_dim = 28
+    action_dim = 1
 
-    agent = RandomAgent()
+    buildings_to_use = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+
+    env = init_environment(buildings_to_use)
+
+    # agent = RandomAgent()
+    # agent = OneActionAgent([0])
+    # agent = BasicRBCAgent()
+    agent = BetterRBCAgent()
     # agent = OrderEnforcingAgent()
 
     print_sequences = False
@@ -62,9 +72,8 @@ def env_reset(env):
 
 def generate_data():
     print("========================= Start Data Collection ========================")
-    print("==>", "agent")
 
-    env = CityLearnEnv(schema=Constants.schema_path)
+    env = Constants.env
 
     agent = Constants.agent
 
@@ -74,6 +83,13 @@ def generate_data():
     action_data = []
     reward_data = []
     done_data = []
+    amount_buildings = len(env.buildings)
+    print("==> Model:", agent.__class__.__name__)
+    print("Amount of buildings:", amount_buildings)
+    print("Buildings used:", Constants.buildings_to_use)
+    start_timestep = env.schema['simulation_start_time_step']
+    end_timestep = env.schema['simulation_end_time_step']
+    print("Environment simulation from", start_timestep, "to", end_timestep)
 
     obs_dict = env_reset(env)
     observations = obs_dict["observation"]
@@ -88,7 +104,7 @@ def generate_data():
     sequences_completed = 0
     current_step_total = 0
     current_step_in_sequence = 0
-    sequences_return = np.zeros(len(env.buildings))
+    sequences_return = np.zeros(amount_buildings)
     interrupted = False
     episode_metrics = []
 
@@ -113,7 +129,7 @@ def generate_data():
                 current_step_in_sequence = 0
                 sequences_completed += 1
 
-                for bi in range(len(env.buildings)):
+                for bi in range(amount_buildings):
                     obs_building_i = np.zeros((Constants.sequence_length, Constants.state_dim), dtype=np.float32)
                     n_obs_building_i = np.zeros((Constants.sequence_length, Constants.state_dim), dtype=np.float32)
                     acts_building_i = np.zeros((Constants.sequence_length, Constants.action_dim), dtype=np.float32)
@@ -178,6 +194,8 @@ def generate_data():
     if not interrupted:
         print("========================= Generation Completed =========================")
 
+    print(f"Total time taken by agent: {agent_time_elapsed}s")
+    print("Total number of steps:", current_step_total)
     if len(episode_metrics) > 0:
         price_cost = np.mean([e['price_cost'] for e in episode_metrics])
         emission_cost = np.mean([e['emmision_cost'] for e in episode_metrics])
@@ -185,8 +203,7 @@ def generate_data():
         print("Average Price Cost:", price_cost)
         print("Average Emission Cost:", emission_cost)
         print("Average Grid Cost:", grid_cost)
-        print("==>", (price_cost + emission_cost + grid_cost) / 3)
-    print(f"Total time taken by agent: {agent_time_elapsed}s")
+        print("==> Score:", (price_cost + emission_cost + grid_cost) / 3)
 
     print("========================= Writing Data File ============================")
 

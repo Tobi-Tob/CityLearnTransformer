@@ -1,10 +1,9 @@
 import pathlib
 import sys
-
 import numpy as np
 import time
-from citylearn.citylearn import CityLearnEnv
 
+from utils import init_environment
 from agents.random_agent import RandomAgent
 from agents.one_action_agent import OneActionAgent
 from agents.rbc_agent import BasicRBCAgent, BetterRBCAgent
@@ -16,12 +15,14 @@ This file is used to evaluate agents on the CityLearn environment
 
 
 class Constants:
-    file_to_save = 'evaluation_results.txt'
+    file_to_save = '_results.txt'
     episodes = 1
     state_dim = 28  # size of state space
     action_dim = 1  # size of action space
-    schema_path = './data/citylearn_challenge_2022_phase_1/schema.json'
-    env = CityLearnEnv(schema_path)
+
+    buildings_to_use = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+
+    env = init_environment(buildings_to_use)
 
     # agent = RandomAgent()
     # agent = OneActionAgent([0])
@@ -60,7 +61,7 @@ def evaluate():
     env = Constants.env
 
     agent = Constants.agent
-    print("==> Model:", agent)
+    print("==> Model:", agent.__class__.__name__)
 
     if isinstance(agent, OneActionAgent):
         print("Action to perform:", agent.action_to_perform)
@@ -76,6 +77,7 @@ def evaluate():
     episodes_completed = 0
     num_steps = 0
     amount_buildings = len(env.buildings)
+    print("Amount of buildings:", amount_buildings)
     episode_return = np.zeros(amount_buildings)
     episode_metrics = []
     interrupted = False
@@ -83,12 +85,13 @@ def evaluate():
     original_stdout = sys.stdout
     with open(Constants.file_to_save, 'w') as f:
         sys.stdout = f
-        print("==> Model:", agent)
+        print("==> Model:", agent.__class__.__name__)
         if isinstance(agent, OneActionAgent):
             print("Action to perform:", agent.action_to_perform)
         start_timestep = env.schema['simulation_start_time_step']
         end_timestep = env.schema['simulation_end_time_step']
         print("Environment simulation from", start_timestep, "to", end_timestep)
+        print("Buildings used:", Constants.buildings_to_use)
         sys.stdout = original_stdout
         try:
             while True:
@@ -132,7 +135,9 @@ def evaluate():
         if not interrupted:
             print("========================= Evaluation Done ========================")
 
+        print(f"Total time taken by agent: {agent_time_elapsed}s")
         sys.stdout = f
+        print(f"Total time taken by agent: {agent_time_elapsed}s")
         print("Total number of steps:", num_steps)
         if len(episode_metrics) > 0:
             price_cost = np.mean([e['price_cost'] for e in episode_metrics])
@@ -141,10 +146,9 @@ def evaluate():
             print("Average Price Cost:", price_cost)
             print("Average Emission Cost:", emission_cost)
             print("Average Grid Cost:", grid_cost)
-            print("==>", (price_cost + emission_cost + grid_cost) / 3)
+            print("==> Score:", (price_cost + emission_cost + grid_cost) / 3)
             sys.stdout = original_stdout
-            print("==>", (price_cost + emission_cost + grid_cost) / 3)
-        print(f"Total time taken by agent: {agent_time_elapsed}s")
+            print("==> Score:", (price_cost + emission_cost + grid_cost) / 3)
         print("Evaluation saved in:", str(pathlib.Path(__file__).parent.resolve()) + '/' + Constants.file_to_save)
 
 

@@ -8,26 +8,31 @@ from MyDecisionTransformer import MyDecisionTransformer
 from citylearn.citylearn import CityLearnEnv
 import sys
 
+from utils import init_environment
+
 """
 This file is used to evaluate a decision transformer loaded form https://huggingface.co/TobiTob/model_name
 """
 
 
 class Constants:
-    file_to_save = 'evaluation_results.txt'
+    file_to_save = '_results.txt'
     """Environment Constants"""
     episodes = 1  # amount of environment resets
     state_dim = 28  # size of state space
     action_dim = 1  # size of action space
-    schema_path = './data/citylearn_challenge_2022_phase_1/schema.json'
+
+    buildings_to_use = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+
+    env = init_environment(buildings_to_use)
 
     """Model Constants"""
-    load_model = "TobiTob/decision_transformer_random4"
+    load_model = "TobiTob/decision_transformer_2"
     force_download = False
     device = "cpu"
-    TARGET_RETURN = -300  # vllt Vector aus 5 Werten
-    # mean and std computed from training dataset these are available in the model card for each model.
+    TARGET_RETURN = -300
 
+    # mean and std computed from training dataset these are available in the model card for each model.
     state_mean = np.array(
         [6.525973284621532, 3.9928073981048064, 12.498801233017467, 16.836990550577212, 16.837287388159297,
          16.83684213167729, 16.837161803003287, 73.00388172165772, 73.00331088023746, 73.00445256307798,
@@ -59,7 +64,7 @@ def evaluate():
     retval = os.getcwd()
     print("Current working directory %s" % retval)
 
-    env = CityLearnEnv(schema=Constants.schema_path)
+    env = Constants.env
 
     agent = MyDecisionTransformer(load_from=Constants.load_model, force_download=Constants.force_download,
                                   device=Constants.device)
@@ -71,6 +76,7 @@ def evaluate():
 
     print("Target Return:", Constants.TARGET_RETURN)
     print("Context Length:", context_length)
+    print("Amount of buildings:", amount_buildings)
 
     scale = 1000.0  # normalization for rewards/returns
     target_return = Constants.TARGET_RETURN / scale
@@ -121,6 +127,7 @@ def evaluate():
         start_timestep = env.schema['simulation_start_time_step']
         end_timestep = env.schema['simulation_end_time_step']
         print("Environment simulation from", start_timestep, "to", end_timestep)
+        print("Buildings used:", Constants.buildings_to_use)
         sys.stdout = original_stdout
 
         while True:
@@ -227,7 +234,9 @@ def evaluate():
                 break
 
         print("========================= Evaluation Done ========================")
+        print(f"Total time taken by agent: {agent_time_elapsed}s")
         sys.stdout = f
+        print(f"Total time taken by agent: {agent_time_elapsed}s")
         print("Total number of steps:", num_steps)
         if len(episode_metrics) > 0:
             price_cost = np.mean([e['price_cost'] for e in episode_metrics])
@@ -236,9 +245,9 @@ def evaluate():
             print("Average Price Cost:", price_cost)
             print("Average Emission Cost:", emission_cost)
             print("Average Grid Cost:", grid_cost)
-            print("==>", (price_cost + emission_cost + grid_cost) / 3)
-        print(f"Total time taken by agent: {agent_time_elapsed}s")
-        sys.stdout = original_stdout
+            print("==> Score:", (price_cost + emission_cost + grid_cost) / 3)
+            sys.stdout = original_stdout
+            print("==> Score:", (price_cost + emission_cost + grid_cost) / 3)
         print("Evaluation saved in:", str(pathlib.Path(__file__).parent.resolve()) + '/' + Constants.file_to_save)
 
 

@@ -1,4 +1,0 @@
-==> Model: TobiTob/decision_transformer_2
-Target Return: -2500
-Context Length: 20
-Environment simulation from 0 to 4090
