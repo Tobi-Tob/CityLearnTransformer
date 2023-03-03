@@ -23,17 +23,17 @@ list(
 
 
 class Constants:
-    file_to_save = "s_non.pkl"
-    sequence_length = 100
-    episodes = 1
+    file_to_save = "s_random4.pkl"
+    sequence_length = 1
+    episodes = 10
     state_dim = 28  # size of state space
     action_dim = 1  # size of action space
     schema_path = './data/citylearn_challenge_2022_phase_1/schema.json'
 
-    # agent = RandomAgent()
-    agent = OrderEnforcingAgent()
+    agent = RandomAgent()
+    # agent = OrderEnforcingAgent()
 
-    print_sequences = True
+    print_sequences = False
 
 
 def action_space_to_dict(aspace):
@@ -96,7 +96,7 @@ def generate_data():
         while True:
             current_step_in_sequence += 1
             current_step_total += 1
-            next_observations, reward, done, info = env.step(actions)
+            next_observations, reward, done, _ = env.step(actions)
             # ACTION [-1,1] attempts to decrease or increase the electricity stored in the battery by an amount
             # equivalent to action times its maximum capacity
             # Save environment interactions:

@@ -22,11 +22,10 @@ class Constants:
     schema_path = './data/citylearn_challenge_2022_phase_1/schema.json'
 
     """Model Constants"""
-    load_model = "TobiTob/decision_transformer_2"
+    load_model = "TobiTob/decision_transformer_random4"
     force_download = False
     device = "cpu"
-    #device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    TARGET_RETURN = -2500  # vllt Vector aus 5 Werten
+    TARGET_RETURN = -300  # vllt Vector aus 5 Werten
     # mean and std computed from training dataset these are available in the model card for each model.
 
     state_mean = np.array(
@@ -34,15 +33,15 @@ class Constants:
          16.83684213167729, 16.837161803003287, 73.00388172165772, 73.00331088023746, 73.00445256307798,
          73.00331088023746, 208.30597100125584, 208.30597100125584, 208.20287704075807, 208.30597100125584,
          201.25448110514898, 201.25448110514898, 201.16189062678387, 201.25448110514898, 0.15652765849893777,
-         1.0663012570140091, 0.6994348432433195, 0.5023924181838172, 0.49339119658209996, 0.2731373418679261,
+         1.0663012570140078, 0.6994348432433195, 0.5013689875312162, 0.4935302488697666, 0.2731373418679261,
          0.2731373418679261, 0.2731373418679261, 0.2731373418679261])
     state_std = np.array(
-        [3.448045414453991, 2.0032677368929734, 6.921673394725967, 3.564552828057008, 3.5647828974724476,
-         3.5643565817901974, 3.564711987899257, 16.480221141108398, 16.480030755727572, 16.480238315742053,
-         16.480030755727565, 292.79094956097464, 292.79094956097464, 292.70528837855596, 292.79094956097543,
-         296.18549714910006, 296.18549714910023, 296.1216266457902, 296.18549714910006, 0.035369600587780235,
-         0.8889958578862672, 1.0171468928300462, 0.40202104980478576, 2.6674362928093682, 0.11780233435944305,
-         0.11780233435944333, 0.11780233435944351, 0.11780233435944402])
+        [3.448045414453994, 2.0032677368929686, 6.921673394725964, 3.564552828057004, 3.5647828974724414,
+         3.564356581790196, 3.5647119878992584, 16.48022114110837, 16.480030755727576, 16.480238315742056,
+         16.48003075572758, 292.7909495609744, 292.7909495609746, 292.7052883785563, 292.79094956097475,
+         296.18549714910006, 296.1854971490999, 296.12162664579046, 296.1854971490999, 0.03536960058778021,
+         0.8889958578862687, 1.0171468928300453, 0.40170260289330983, 2.670364699458071, 0.11780233435944319,
+         0.11780233435944341, 0.11780233435944353, 0.11780233435944416])
 
 
 def preprocess_states(state_list_of_lists, amount_buildings):
@@ -65,15 +64,18 @@ def evaluate():
     agent = MyDecisionTransformer(load_from=Constants.load_model, force_download=Constants.force_download,
                                   device=Constants.device)
     print("Using device:", Constants.device)
+    print("==> Model:", Constants.load_model)
 
     context_length = agent.model.config.max_length
     amount_buildings = len(env.buildings)
+
+    print("Target Return:", Constants.TARGET_RETURN)
+    print("Context Length:", context_length)
 
     scale = 1000.0  # normalization for rewards/returns
     target_return = Constants.TARGET_RETURN / scale
 
     # Initialize Tensors
-    episode_return = np.zeros(amount_buildings)
     state_list_of_lists = env.reset()
     state_list_of_lists = preprocess_states(state_list_of_lists, amount_buildings)
 
@@ -81,6 +83,8 @@ def evaluate():
     target_return_list_of_tensors = []
     action_list_of_tensors = []
     reward_list_of_tensors = []
+
+    episode_return = np.zeros(amount_buildings)
 
     for bi in range(amount_buildings):
         state_bi = torch.from_numpy(np.array(state_list_of_lists[bi])).reshape(1, Constants.state_dim).to(
@@ -147,6 +151,7 @@ def evaluate():
             # Interaction with the environment
             state_list_of_lists, reward_list_of_lists, done, _ = env.step(next_actions)
             state_list_of_lists = preprocess_states(state_list_of_lists, amount_buildings)
+            episode_return += reward_list_of_lists
 
             if done:
                 episodes_completed += 1
@@ -199,8 +204,6 @@ def evaluate():
                     pred_return = target_return_list_of_tensors[bi][0, -1] - (reward_list_of_lists[bi] / scale)
                     target_return_list_of_tensors[bi] = torch.cat(
                         [target_return_list_of_tensors[bi], pred_return.reshape(1, 1)], dim=1)
-
-                    episode_return[bi] += reward_list_of_lists[bi]
 
                 timesteps = torch.cat(
                     [timesteps, torch.ones((1, 1), device=Constants.device, dtype=torch.long) * (t + 1)],

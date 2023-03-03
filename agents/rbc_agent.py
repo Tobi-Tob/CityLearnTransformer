@@ -1,47 +1,94 @@
 import numpy as np
 
-def rbc_policy(observation, action_space):
-    """
-    Simple rule based policy based on day or night time
-    """
-    hour = observation[2] # Hour index is 2 for all observations
-    
-    action = 0.0 # Default value
-
-    multiplier = 0.6
-    # Daytime: release stored energy  2*0.08 + 0.1*7 + 0.09
-
-    if hour >= 7 and hour <= 11:
-        action = -0.05 * multiplier 
-    elif hour >= 12 and hour <= 15:
-        action = -0.05 * multiplier
-    elif hour >= 16 and hour <= 18:
-        action = -0.11 * multiplier
-    elif hour >= 19 and hour <= 22:
-        action = -0.06 * multiplier 
-    
-    # Early nightime: store DHW and/or cooling energy
-    if hour >= 23 and hour <= 24:
-        action = 0.085 * multiplier 
-    elif hour >= 1 and hour <= 6:
-        action = 0.1383 * multiplier 
-
-
-    action = np.array([action], dtype=action_space.dtype)
-    assert action_space.contains(action)
-    return action
 
 class BasicRBCAgent:
-    """
-    Basic Rule based agent adopted from official Citylearn Rule based agent
-    https://github.com/intelligent-environments-lab/CityLearn/blob/6ee6396f016977968f88ab1bd163ceb045411fa2/citylearn/agents/rbc.py#L23
-    """
+
     def __init__(self):
-        self.action_space = {}
+        self.action_dim = 1
 
-    def set_action_space(self, agent_id, action_space):
-        self.action_space[agent_id] = action_space
+    def register_reset(self, obs_dict):
+        """Get the first observation after env reset, return action"""
+        obs = obs_dict["observation"]
 
-    def compute_action(self, observation, agent_id):
+        return self.compute_action(obs)
+
+    def compute_action(self, obs):
         """Get observation return action"""
-        return rbc_policy(observation, self.action_space[agent_id])
+        return self.basic_rbc_policy(obs)
+
+    def basic_rbc_policy(self, observation):
+        """
+        Simple rule based policy based on day or nighttime
+        """
+        hour = observation[0][2]  # Hour index is 2 for all observations
+
+        action = 0.0  # Default value
+        if 9 <= hour <= 21:
+            # Daytime: release stored energy
+            action = -0.08
+        elif (1 <= hour <= 8) or (22 <= hour <= 24):
+            # Early nighttime: store DHW and/or cooling energy
+            action = 0.091
+
+        actions = []
+        for bi in range(len(observation)):
+            actions.append(np.array([action]))
+
+        return actions
+
+
+class BetterRBCAgent:
+
+    def __init__(self):
+        self.action_dim = 1
+
+    def register_reset(self, obs_dict):
+        """Get the first observation after env reset, return action"""
+        obs = obs_dict["observation"]
+
+        return self.compute_action(obs)
+
+    def compute_action(self, obs):
+        """Get observation return action"""
+        return self.better_rbc_policy(obs)
+
+    def better_rbc_policy(self, observation):
+        """
+        Rule based policy depending on daytime, solar_generation and electrical_storage.
+        Parameters determined by manual search.
+        """
+        actions = []
+        hour = observation[0][2]
+
+        gamma = 0.076
+        delta = 0.201
+        epsilon = 0.77
+
+        for bi in range(len(observation)):
+            solar_generation = observation[bi][21]
+            electrical_storage = observation[bi][22]
+
+            # Daytime: load battery with regard to current solar generation
+            if 7 <= hour <= 16:
+                action = gamma * solar_generation
+
+            # Evening and night: try to use stored energy with regard to current storage level
+            else:
+                action = - delta * electrical_storage
+
+            #  slow down positive actions near storage limit
+            if action > 0:
+                if electrical_storage > 0.99:
+                    action = 0
+                elif electrical_storage > 0.7:
+                    action = epsilon * action
+
+            #  clip actions to [1,-1]
+            if action > 1:
+                action = 1
+            if action < -1:
+                action = -1
+
+            actions.append(np.array([action]))
+
+        return actions
