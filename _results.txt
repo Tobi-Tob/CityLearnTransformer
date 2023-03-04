@@ -1,9 +1,9 @@
 ==> Model: OneActionAgent
 Action to perform: [0]
 Environment simulation from 0 to 20
-Buildings used: [14, 15, 16]
-1 [-19.64894955  -4.5786331  -11.63411665]
-Total time taken by agent: 6.619099940508022e-05s
+Buildings used: [15, 16]
+1 [ -4.5786331  -11.63411665]
+Total time taken by agent: 4.028700277558528e-05s
 Total number of steps: 20
 Average Price Cost: 1.0
 Average Emission Cost: 1.0

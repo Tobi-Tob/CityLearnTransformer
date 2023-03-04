@@ -1,6 +1,7 @@
 from typing import List
 
 import numpy as np
+from citylearn.cost_function import CostFunction
 from citylearn.reward_function import RewardFunction
 from rewards.get_reward import get_reward
 
@@ -16,7 +17,7 @@ class UserReward(RewardFunction):
         electricity_pricing_index = 24
         agent_count = agent_count
 
-        self.electricity_consumption_history = []  # List[List[float]]
+        self.electricity_consumption_history = []  # List[float]
         self.max_history_length = 2
 
         if observation is None:
@@ -53,7 +54,7 @@ class UserReward(RewardFunction):
                    electricity_price: List[float],
                    agent_ids: List[int]) -> List[float]:
 
-        print(self.electricity_consumption_history)
+        # print(self.electricity_consumption_history)
 
         # carbon_emission = np.array(carbon_emission).clip(min=0)
         # electricity_price = np.array(electricity_price).clip(min=0)
@@ -61,10 +62,12 @@ class UserReward(RewardFunction):
 
         # reward = (np.array(electricity_consumption) * -1).clip(max=0).tolist()
 
-        if len(self.electricity_consumption_history) >= 2:
-            reward = -abs(np.array(self.electricity_consumption_history[-1]) - np.array(self.electricity_consumption_history[-2]))
-        else:
-            reward = 0
-        print("reward:", reward)
+        # reward = CostFunction.ramping(self.net_electricity_consumption_history)[-1]
 
-        return reward
+        ramping_cost = np.zeros(len(agent_ids))  # Costs when the building has changes in electricity consumption
+        if len(self.electricity_consumption_history) >= 2:
+            ramping_cost = abs(np.array(self.electricity_consumption_history[-1]) - np.array(self.electricity_consumption_history[-2]))
+
+        reward = - ramping_cost
+
+        return reward.tolist()
