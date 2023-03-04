@@ -1,4 +1,6 @@
 import os
+import warnings
+
 import numpy as np
 import pickle
 import time
@@ -27,13 +29,13 @@ list(
 
 
 class Constants:
-    file_to_save = "s_non.pkl"
-    sequence_length = 24
+    file_prefix = "s"
+    sequence_length = 20  # should be divisor of environment simulation steps
     episodes = 3
     state_dim = 28
     action_dim = 1
 
-    buildings_to_use = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+    buildings_to_use = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
 
     env = init_environment(buildings_to_use)
 
@@ -207,17 +209,31 @@ def generate_data():
 
     print("========================= Writing Data File ============================")
 
-    length = 0
+    longest_sequence_length = 0
+    shortest_sequence_length = float('inf')
     for data in dataset:
-        if len(data["observations"]) > length:
-            length = len(data["observations"])
+        if len(data["observations"]) > longest_sequence_length:
+            longest_sequence_length = len(data["observations"])
+        if len(data["observations"]) < shortest_sequence_length:
+            shortest_sequence_length = len(data["observations"])
 
     print("Amount Of Sequences: ", len(dataset))
-    print("Longest Sequence: ", length)
-    total_values = (2 * Constants.state_dim + Constants.action_dim + 2) * length * len(dataset)
+    print("Longest Sequence: ", longest_sequence_length)
+    print("Shortest Sequence: ", shortest_sequence_length)
+
+    test = len(dataset) - (amount_buildings * sequences_completed)
+    if test != 0:
+        warnings.warn(str(len(dataset)) + " != " + str(amount_buildings) + "*" + str(sequences_completed))
+    total_values = (2 * Constants.state_dim + Constants.action_dim + 2) * longest_sequence_length * len(dataset)
+
     print("Total values to store: ", total_values)
 
-    file_path = "./data/" + Constants.file_to_save
+    ''' Format: [SEQUENCE_LENGTH] x [AMOUNT_BUILDINGS] x [AMOUNT_SEQUENCES] '''
+    file_info = "_" + str(longest_sequence_length) + "x" + str(amount_buildings) + "x" + str(sequences_completed)
+    file_extension = ".pkl"
+    file_name = Constants.file_prefix + file_info + file_extension
+    file_path = "./data/" + file_name
+
     # create or overwrite pickle file
     with open(file_path, "wb") as f:
         pickle.dump(dataset, f)
@@ -228,7 +244,7 @@ def generate_data():
         string_byte = "(" + str(round(file_size / 1e+6)) + " MB)"
     else:
         string_byte = "(" + str(round(file_size / 1e+3)) + " kB)"
-    print("==> Data saved in", file_path, string_byte)
+    print("==> Data saved in", file_name, string_byte)
 
 
 if __name__ == '__main__':

@@ -1,12 +1,11 @@
-==> Model: OrderEnforcingAgent
-Environment simulation from 0 to 200
-Buildings used: [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
-1 [ -73.03905862 -127.63801581  -50.53035059  -52.51704614  -79.57084277
-  -86.14737768  -38.30740317  -60.17612452  -89.27565117  -64.16342826
-  -56.65067584 -135.18343397]
-Total time taken by agent: 2.0480126309921616s
-Total number of steps: 200
-Average Price Cost: 0.8276812306816389
-Average Emission Cost: 0.9222754022302712
-Average Grid Cost: 1.0609039666284357
-==> Score: 0.9369535331801152
+==> Model: OneActionAgent
+Action to perform: [0]
+Environment simulation from 0 to 20
+Buildings used: [14, 15, 16]
+1 [-19.64894955  -4.5786331  -11.63411665]
+Total time taken by agent: 6.619099940508022e-05s
+Total number of steps: 20
+Average Price Cost: 1.0
+Average Emission Cost: 1.0
+Average Grid Cost: 1.0
+==> Score: 1.0

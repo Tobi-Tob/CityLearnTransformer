@@ -28,11 +28,11 @@ def get_reward(electricity_consumption: List[float], carbon_emission: List[float
             or = number of buildings (independent agent for each building).
         """
 
-    # *********** BEGIN EDIT ***********
-    # Replace with custom reward calculation
+    print(carbon_emission)
     carbon_emission = np.array(carbon_emission).clip(min=0)
     electricity_price = np.array(electricity_price).clip(min=0)
     reward = (carbon_emission + electricity_price) * -1
-    # ************** END ***************
+
+    # reward = (np.array(electricity_consumption) * -1).clip(max=0).tolist()
 
     return reward
