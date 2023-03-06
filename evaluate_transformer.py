@@ -22,7 +22,8 @@ class Constants:
     state_dim = 28  # size of state space
     action_dim = 1  # size of action space
 
-    buildings_to_use = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+    #  [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+    buildings_to_use = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
 
     env = init_environment(buildings_to_use)
 
@@ -30,6 +31,7 @@ class Constants:
     load_model = "TobiTob/decision_transformer_2"
     force_download = False
     device = "cpu"
+    # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     TARGET_RETURN = -300
 
     # mean and std computed from training dataset these are available in the model card for each model.

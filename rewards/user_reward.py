@@ -54,20 +54,19 @@ class UserReward(RewardFunction):
                    electricity_price: List[float],
                    agent_ids: List[int]) -> List[float]:
 
-        # print(self.electricity_consumption_history)
-
-        # carbon_emission = np.array(carbon_emission).clip(min=0)
-        # electricity_price = np.array(electricity_price).clip(min=0)
-        # reward = (carbon_emission + electricity_price) * -1
+        carbon_emission = np.array(carbon_emission).clip(min=0)
+        electricity_price = np.array(electricity_price).clip(min=0)
+        reward = (carbon_emission + electricity_price) * -1
 
         # reward = (np.array(electricity_consumption) * -1).clip(max=0).tolist()
 
         # reward = CostFunction.ramping(self.net_electricity_consumption_history)[-1]
 
-        ramping_cost = np.zeros(len(agent_ids))  # Costs when the building has changes in electricity consumption
+        ramping_cost = np.zeros(len(agent_ids))  # Costs when the building has fluctuations in electricity consumption
         if len(self.electricity_consumption_history) >= 2:
             ramping_cost = abs(np.array(self.electricity_consumption_history[-1]) - np.array(self.electricity_consumption_history[-2]))
 
-        reward = - ramping_cost
+        load_factor_cost = np.zeros(len(agent_ids))
 
-        return reward.tolist()
+
+        return reward

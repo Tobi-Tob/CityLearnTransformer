@@ -1,11 +1,14 @@
-==> Model: OneActionAgent
-Action to perform: [0]
-Environment simulation from 0 to 20
-Buildings used: [15, 16]
-1 [ -4.5786331  -11.63411665]
-Total time taken by agent: 4.028700277558528e-05s
-Total number of steps: 20
-Average Price Cost: 1.0
-Average Emission Cost: 1.0
-Average Grid Cost: 1.0
-==> Score: 1.0
+==> Model: TobiTob/decision_transformer_2
+Target Return: -300
+Context Length: 20
+Environment simulation from 0 to 300
+Buildings used: [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+1 [-107.45244459 -157.46062879  -75.54954567  -71.83860945 -114.5322717
+ -114.24866526  -59.46126149  -76.855155   -124.78477341  -98.85841747
+  -73.50350748 -207.53556579]
+Total time taken by agent: 41.18052004199126s
+Total number of steps: 300
+Average Price Cost: 0.780108712218164
+Average Emission Cost: 0.8863528478557346
+Average Grid Cost: 0.8859722365371971
+==> Score: 0.850811265537032

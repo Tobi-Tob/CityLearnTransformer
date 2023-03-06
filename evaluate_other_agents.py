@@ -20,17 +20,17 @@ class Constants:
     state_dim = 28  # size of state space
     action_dim = 1  # size of action space
     # [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
-    buildings_to_use = [15, 16]
+    buildings_to_use = [1, 2, 3, 4, 5]
 
     env = init_environment(buildings_to_use)
 
     # agent = RandomAgent()
-    agent = OneActionAgent([0])
+    # agent = OneActionAgent([0])
     # agent = BasicRBCAgent()
-    # agent = BetterRBCAgent()
+    agent = BetterRBCAgent()
     # agent = OrderEnforcingAgent()
 
-    print_interactions = True
+    print_interactions = False
 
 
 def action_space_to_dict(aspace):
@@ -100,10 +100,9 @@ def evaluate():
 
                 observations, reward, done, _ = env.step(actions)
                 if Constants.print_interactions:
-                    print(actions[-1])
-                    print(reward[-1])
-                    print("t =", num_steps)
-                    print(observations[-1])
+                    print(num_steps, "Action", actions[-1])
+                    print(num_steps, "Reward", reward[-1])
+                    print(num_steps + 1, "State", observations[-1])
 
                 episode_return += reward
                 if done:
