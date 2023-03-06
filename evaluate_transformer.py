@@ -29,10 +29,10 @@ class Constants:
 
     """Model Constants"""
     load_model = "TobiTob/decision_transformer_2"
+    TARGET_RETURN = -300
     force_download = False
     device = "cpu"
     # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    TARGET_RETURN = -300
 
     # mean and std computed from training dataset these are available in the model card for each model.
     state_mean = np.array(
