@@ -1,5 +1,7 @@
+import math
 import os
 import pathlib
+import warnings
 
 import numpy as np
 import time
@@ -28,27 +30,33 @@ class Constants:
     env = init_environment(buildings_to_use)
 
     """Model Constants"""
-    load_model = "TobiTob/decision_transformer_2"
-    TARGET_RETURN = -300
+    load_model = "TobiTob/decision_transformer_random2"
+    TARGET_RETURN = -1000000
+    scale = 1000.0  # normalization for rewards/returns
+    trained_sequence_length = 10
     force_download = False
     device = "cpu"
     # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     # mean and std computed from training dataset these are available in the model card for each model.
     state_mean = np.array(
-        [6.525973284621532, 3.9928073981048064, 12.498801233017467, 16.836990550577212, 16.837287388159297,
-         16.83684213167729, 16.837161803003287, 73.00388172165772, 73.00331088023746, 73.00445256307798,
-         73.00331088023746, 208.30597100125584, 208.30597100125584, 208.20287704075807, 208.30597100125584,
-         201.25448110514898, 201.25448110514898, 201.16189062678387, 201.25448110514898, 0.15652765849893777,
-         1.0663012570140078, 0.6994348432433195, 0.5013689875312162, 0.4935302488697666, 0.2731373418679261,
-         0.2731373418679261, 0.2731373418679261, 0.2731373418679261])
+        [6.524725274725275, 4.0, 12.5, 16.82414151013116, 16.824221638205287, 16.824931345033995, 16.826831528227846,
+         72.99347527472527, 72.99690934065934, 72.99771062271063, 72.99793956043956, 208.09832875457874,
+         208.09832875457874, 207.99828296703296, 208.04052197802199, 201.2047847985348, 201.2047847985348,
+         200.9787087912088, 201.07337454212455, 0.15644727026678676, 1.0649622487535593, 0.698845768454032,
+         0.29053989909890887, 0.40246672639159975, 0.2730940908121948, 0.2730940908121948, 0.2730940908121948,
+         0.2730940908121948])
     state_std = np.array(
-        [3.448045414453994, 2.0032677368929686, 6.921673394725964, 3.564552828057004, 3.5647828974724414,
-         3.564356581790196, 3.5647119878992584, 16.48022114110837, 16.480030755727576, 16.480238315742056,
-         16.48003075572758, 292.7909495609744, 292.7909495609746, 292.7052883785563, 292.79094956097475,
-         296.18549714910006, 296.1854971490999, 296.12162664579046, 296.1854971490999, 0.03536960058778021,
-         0.8889958578862687, 1.0171468928300453, 0.40170260289330983, 2.670364699458071, 0.11780233435944319,
-         0.11780233435944341, 0.11780233435944353, 0.11780233435944416])
+        [3.45249550848508, 2.000001, 6.922187552431729, 3.558390488463375, 3.5584332104834475, 3.5597205997424637,
+         3.562993303420064, 16.493626378430776, 16.495771758046548, 16.49786395064331, 16.500000871352384,
+         292.60064712158675, 292.60064712158675, 292.5436886390126, 292.59224711733805, 296.2624357554102,
+         296.2624357554102, 296.1515750498725, 296.17591057089743, 0.035341802298539345, 0.8881956546478823,
+         1.0169103813441684, 0.3233151110048493, 0.9211891038275134, 0.11775969542702686, 0.11775969542702672,
+         0.11775969542702656, 0.11775969542702626])
+
+    start_timestep = env.schema['simulation_start_time_step']
+    end_timestep = env.schema['simulation_end_time_step']
+    total_time_steps = end_timestep - start_timestep
 
 
 def preprocess_states(state_list_of_lists, amount_buildings):
@@ -58,6 +66,18 @@ def preprocess_states(state_list_of_lists, amount_buildings):
                                           Constants.state_std[si]
 
     return state_list_of_lists
+
+
+def calc_sequence_target_return(return_to_go_list, num_steps_in_episode):
+    timesteps_left = Constants.total_time_steps - num_steps_in_episode
+    target_returns_for_next_sequence = []
+    for bi in range(len(return_to_go_list)):
+        required_reward_per_timestep = return_to_go_list[bi] / timesteps_left
+        if timesteps_left < Constants.trained_sequence_length:
+            target_returns_for_next_sequence.append(required_reward_per_timestep * timesteps_left / Constants.scale)
+        else:
+            target_returns_for_next_sequence.append(required_reward_per_timestep * Constants.trained_sequence_length / Constants.scale)
+    return target_returns_for_next_sequence
 
 
 def evaluate():
@@ -80,8 +100,16 @@ def evaluate():
     print("Context Length:", context_length)
     print("Amount of buildings:", amount_buildings)
 
-    scale = 1000.0  # normalization for rewards/returns
-    target_return = Constants.TARGET_RETURN / scale
+    episodes_completed = 0
+    sequences_completed = 0
+    num_steps_total = 0
+    num_steps_in_episode = 0
+    num_steps_in_sequence = 0
+    agent_time_elapsed = 0
+    episode_metrics = []
+
+    return_to_go_list = [Constants.TARGET_RETURN] * amount_buildings
+    target_returns_for_next_sequence = calc_sequence_target_return(return_to_go_list, num_steps_in_episode)
 
     # Initialize Tensors
     state_list_of_lists = env.reset()
@@ -98,7 +126,7 @@ def evaluate():
         state_bi = torch.from_numpy(np.array(state_list_of_lists[bi])).reshape(1, Constants.state_dim).to(
             device=Constants.device,
             dtype=torch.float32)
-        target_return_bi = torch.tensor(target_return, device=Constants.device, dtype=torch.float32).reshape(1, 1)
+        target_return_bi = torch.tensor(target_returns_for_next_sequence[bi], device=Constants.device, dtype=torch.float32).reshape(1, 1)
         action_bi = torch.zeros((0, Constants.action_dim), device=Constants.device, dtype=torch.float32)
         reward_bi = torch.zeros(0, device=Constants.device, dtype=torch.float32)
 
@@ -114,12 +142,6 @@ def evaluate():
     # print(target_return_list_of_tensors) Liste mit 5 leeren Tensoren, jeder Tensor enthält den target_return / scale
     # print(timesteps) enthält einen Tensor mit 0: tensor([[0]])
 
-    episodes_completed = 0
-    num_steps = 0
-    t = 0
-    agent_time_elapsed = 0
-    episode_metrics = []
-
     original_stdout = sys.stdout
     with open(Constants.file_to_save, 'w') as f:
         sys.stdout = f
@@ -131,8 +153,37 @@ def evaluate():
         print("Environment simulation from", start_timestep, "to", end_timestep)
         print("Buildings used:", Constants.buildings_to_use)
         sys.stdout = original_stdout
+        if end_timestep - start_timestep >= 4096:
+            warnings.warn("Evaluation steps are over 4096")
 
         while True:
+            if num_steps_in_sequence >= Constants.trained_sequence_length:  # if Sequence complete
+                sequences_completed += 1
+                num_steps_in_sequence = 0
+
+                target_returns_for_next_sequence = calc_sequence_target_return(return_to_go_list, num_steps_in_episode)
+
+                #  Reset History and only save last state
+                last_state_list_of_tensor = []
+                target_return_list_of_tensors = []
+                action_list_of_tensors = []
+                reward_list_of_tensors = []
+
+                for bi in range(amount_buildings):
+                    state_bi = state_list_of_tensors[bi][-1:]
+                    target_return_bi = torch.tensor(target_returns_for_next_sequence[bi], device=Constants.device,
+                                                    dtype=torch.float32).reshape(1, 1)
+                    action_bi = torch.zeros((0, Constants.action_dim), device=Constants.device, dtype=torch.float32)
+                    reward_bi = torch.zeros(0, device=Constants.device, dtype=torch.float32)
+
+                    last_state_list_of_tensor.append(state_bi)
+                    target_return_list_of_tensors.append(target_return_bi)
+                    action_list_of_tensors.append(action_bi)
+                    reward_list_of_tensors.append(reward_bi)
+
+                state_list_of_tensors = last_state_list_of_tensor
+
+                timesteps = torch.tensor(0, device=Constants.device, dtype=torch.long).reshape(1, 1)
 
             next_actions = []
             for bi in range(amount_buildings):
@@ -175,7 +226,12 @@ def evaluate():
                 sys.stdout = original_stdout
 
                 # new Initialization and env Reset
-                t = 0
+                num_steps_in_episode = 0
+                num_steps_in_sequence = 0
+
+                return_to_go_list = [Constants.TARGET_RETURN] * amount_buildings
+                target_returns_for_next_sequence = calc_sequence_target_return(return_to_go_list, num_steps_in_episode)
+
                 episode_return = np.zeros(amount_buildings)
                 state_list_of_lists = env.reset()
                 state_list_of_lists = preprocess_states(state_list_of_lists, amount_buildings)
@@ -188,9 +244,8 @@ def evaluate():
                 for bi in range(amount_buildings):
                     state_bi = torch.from_numpy(np.array(state_list_of_lists[bi])).reshape(1, Constants.state_dim).to(
                         device=Constants.device, dtype=torch.float32)
-                    target_return_bi = torch.tensor(target_return, device=Constants.device,
-                                                    dtype=torch.float32).reshape(1,
-                                                                                 1)
+                    target_return_bi = torch.tensor(target_returns_for_next_sequence[bi], device=Constants.device,
+                                                    dtype=torch.float32).reshape(1, 1)
                     action_bi = torch.zeros((0, Constants.action_dim), device=Constants.device, dtype=torch.float32)
                     reward_bi = torch.zeros(0, device=Constants.device, dtype=torch.float32)
 
@@ -210,12 +265,14 @@ def evaluate():
                     state_list_of_tensors[bi] = torch.cat([state_list_of_tensors[bi], cur_state], dim=0)
                     reward_list_of_tensors[bi][-1] = reward_list_of_lists[bi]
 
-                    pred_return = target_return_list_of_tensors[bi][0, -1] - (reward_list_of_lists[bi] / scale)
+                    pred_return = target_return_list_of_tensors[bi][0, -1] - (reward_list_of_lists[bi] / Constants.scale)
                     target_return_list_of_tensors[bi] = torch.cat(
                         [target_return_list_of_tensors[bi], pred_return.reshape(1, 1)], dim=1)
+                    return_to_go_list[bi] = return_to_go_list[bi] - reward_list_of_lists[bi]
 
                 timesteps = torch.cat(
-                    [timesteps, torch.ones((1, 1), device=Constants.device, dtype=torch.long) * (t + 1)],
+                    [timesteps,
+                     torch.ones((1, 1), device=Constants.device, dtype=torch.long) * (num_steps_in_sequence + 1)],
                     dim=1)
 
                 if timesteps.size(dim=1) > context_length:
@@ -227,10 +284,13 @@ def evaluate():
                         reward_list_of_tensors[bi] = reward_list_of_tensors[bi][-context_length:]
                         target_return_list_of_tensors[bi] = target_return_list_of_tensors[bi][:, -context_length:]
 
-            num_steps += 1
-            t += 1
-            if num_steps % 100 == 0:
-                print(f"Num Steps: {num_steps}, Num episodes: {episodes_completed}")
+                num_steps_in_episode += 1
+                num_steps_in_sequence += 1
+
+            num_steps_total += 1
+
+            if num_steps_total % 100 == 0:
+                print(f"Num Steps: {num_steps_total}, Num episodes: {episodes_completed}")
 
             if episodes_completed >= Constants.episodes:
                 break
@@ -239,7 +299,7 @@ def evaluate():
         print(f"Total time taken by agent: {agent_time_elapsed}s")
         sys.stdout = f
         print(f"Total time taken by agent: {agent_time_elapsed}s")
-        print("Total number of steps:", num_steps)
+        print("Total number of steps:", num_steps_total)
         if len(episode_metrics) > 0:
             price_cost = np.mean([e['price_cost'] for e in episode_metrics])
             emission_cost = np.mean([e['emmision_cost'] for e in episode_metrics])
