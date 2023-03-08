@@ -20,15 +20,15 @@ class Constants:
     state_dim = 28  # size of state space
     action_dim = 1  # size of action space
     # [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
-    buildings_to_use = [1, 2, 3, 4, 5]
+    buildings_to_use = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
 
     env = init_environment(buildings_to_use)
 
     # agent = RandomAgent()
     # agent = OneActionAgent([0])
     # agent = BasicRBCAgent()
-    agent = BetterRBCAgent()
-    # agent = OrderEnforcingAgent()
+    # agent = BetterRBCAgent()
+    agent = OrderEnforcingAgent()
 
     print_interactions = False
 
