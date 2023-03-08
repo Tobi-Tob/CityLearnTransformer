@@ -19,6 +19,10 @@ class UserReward(RewardFunction):
 
         self.electricity_consumption_history = []  # List[float]
         self.max_history_length = 2
+        # nec_mean_5_buildings = 4.367397951030437  # mean of all positive electricity consumptions of reference agent
+        # nec_std_5_buildings = 2.4662300511545916  # standard deviation of all positive electricity consumptions of reference agent
+        # self.nec_mean = nec_mean_5_buildings / 5
+        # self.nec_std = nec_std_5_buildings / 5  # mean nec of reference agent 1 building
 
         if observation is None:
             electricity_consumption = None
@@ -35,38 +39,43 @@ class UserReward(RewardFunction):
                          electricity_price=electricity_price)
 
     def calculate(self) -> List[float]:
-        """CityLearn Challenge reward calculation.
-
-        Notes
-        -----
-        This function is called internally in the environment's :meth:`citylearn.CityLearnEnv.step` function.
-        """
 
         self.electricity_consumption_history.append(self.electricity_consumption)
         self.electricity_consumption_history = self.electricity_consumption_history[-self.max_history_length:]
 
-        return self.get_reward(self.electricity_consumption,
-                               self.carbon_emission,
-                               self.electricity_price,
-                               list(range(self.agent_count)))
+        return self.get_reward2(self.electricity_consumption,
+                                self.carbon_emission,
+                                self.electricity_price,
+                                list(range(self.agent_count)))
 
-    def get_reward(self, electricity_consumption: List[float], carbon_emission: List[float],
-                   electricity_price: List[float],
-                   agent_ids: List[int]) -> List[float]:
+    def get_reward2(self, electricity_consumption: List[float], carbon_emission: List[float],
+                    electricity_price: List[float],
+                    agent_ids: List[int]) -> List[float]:
 
-        carbon_emission = np.array(carbon_emission).clip(min=0)
-        electricity_price = np.array(electricity_price).clip(min=0)
-        reward = (carbon_emission + electricity_price) * -1
+        alpha = 4.98866624
+        price_cost = - alpha * np.array(electricity_price).clip(min=0)
 
-        # reward = (np.array(electricity_consumption) * -1).clip(max=0).tolist()
+        beta = 9.46691265
+        emission_cost = - beta * np.array(carbon_emission).clip(min=0)
 
-        # reward = CostFunction.ramping(self.net_electricity_consumption_history)[-1]
-
+        gamma = 1.96800773
         ramping_cost = np.zeros(len(agent_ids))  # Costs when the building has fluctuations in electricity consumption
         if len(self.electricity_consumption_history) >= 2:
-            ramping_cost = abs(np.array(self.electricity_consumption_history[-1]) - np.array(self.electricity_consumption_history[-2]))
+            ramping_cost = - gamma * abs(
+                np.array(self.electricity_consumption_history[-1]) - np.array(self.electricity_consumption_history[-2]))
 
-        load_factor_cost = np.zeros(len(agent_ids))
+        delta = 0.92670507
+        load_factor_cost = - delta * np.array(electricity_consumption).clip(min=0) ** 2
 
+        reward = 1 / 3 * price_cost + 1 / 3 * emission_cost + 1 / 6 * ramping_cost + 1 / 6 * load_factor_cost
+        return reward
 
+    def get_reward1(self, electricity_consumption: List[float], carbon_emission: List[float],
+                    electricity_price: List[float],
+                    agent_ids: List[int]) -> List[float]:
+
+        price_cost = - np.array(electricity_price).clip(min=0)
+        emission_cost = - np.array(carbon_emission).clip(min=0)
+
+        reward = price_cost + emission_cost
         return reward

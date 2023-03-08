@@ -20,17 +20,17 @@ class Constants:
     state_dim = 28  # size of state space
     action_dim = 1  # size of action space
     # [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
-    buildings_to_use = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+    buildings_to_use = [1, 2, 3, 4, 5]
 
     env = init_environment(buildings_to_use)
 
     # agent = RandomAgent()
-    # agent = OneActionAgent([0])
+    agent = OneActionAgent([0])
     # agent = BasicRBCAgent()
     # agent = BetterRBCAgent()
-    agent = OrderEnforcingAgent()
+    # agent = OrderEnforcingAgent()
 
-    print_interactions = False
+    print_interactions = True
 
 
 def action_space_to_dict(aspace):
@@ -115,6 +115,7 @@ def evaluate():
                     print(f"Episode complete: {episodes_completed} | Latest episode metrics: {metrics}", )
                     sys.stdout = f
                     print(episodes_completed, episode_return)
+                    print("Reward mean:", sum(episode_return)/amount_buildings)
                     sys.stdout = original_stdout
 
                     obs_dict = env_reset(env)

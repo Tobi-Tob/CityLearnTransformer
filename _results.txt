@@ -1,15 +1,7 @@
-==> Model: TobiTob/decision_transformer_random2
-Target Return: -10
-Context Length: 20
-Trained Sequence Length: 10
-Environment simulation from 0 to 300
-Buildings used: [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
-1 [-127.25322116 -174.99009506  -94.02793998 -100.3540677  -151.31425462
- -134.51680158  -58.19745744 -103.85302436 -143.31948152 -101.08843453
- -105.447811   -230.29562545]
-Total time taken by agent: 24.411544643046s
-Total number of steps: 300
-Average Price Cost: 1.0
-Average Emission Cost: 1.0
-Average Grid Cost: 1.0
-==> Score: 1.0
+==> Model: OneActionAgent
+Action to perform: [0]
+Environment simulation from 0 to 8759
+Buildings used: [1, 2, 3, 4, 5]
+Total time taken by agent: 0.0034987370927410666s
+Total number of steps: 1206
+Evaluation saved in: /home/tobi/PycharmProjects/CityLearn/neurips/_results.txt

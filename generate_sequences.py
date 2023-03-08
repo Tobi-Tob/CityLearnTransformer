@@ -29,9 +29,9 @@ list(
 
 
 class Constants:
-    file_prefix = "f"
-    sequence_length = 50  # should be divisor of environment simulation steps
-    episodes = 10
+    file_prefix = "fr"
+    sequence_length = 24  # should be divisor of environment simulation steps
+    episodes = 1
     state_dim = 28
     action_dim = 1
 
