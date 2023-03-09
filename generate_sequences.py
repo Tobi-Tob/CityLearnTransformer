@@ -1,4 +1,5 @@
 import os
+import random
 import warnings
 
 import numpy as np
@@ -29,12 +30,16 @@ list(
 
 
 class Constants:
-    file_prefix = "fr"
+    file_prefix = "fn"
     sequence_length = 24  # should be divisor of environment simulation steps
-    episodes = 1
+    episodes = 10
     state_dim = 28
     action_dim = 1
 
+    probability_to_add_noise = 0.15
+    range_of_noise = [0, 0.1]
+
+    #  [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
     buildings_to_use = [1, 2, 3, 4, 5]
 
     env = init_environment(buildings_to_use)
@@ -46,6 +51,13 @@ class Constants:
     agent = OrderEnforcingAgent()
 
     print_sequences = False
+
+
+def add_noise(actions, noise):
+    for bi in range(len(Constants.env.buildings)):
+        if random.uniform(0, 1) < Constants.probability_to_add_noise:  # change only a few actions
+            actions[bi][0] += random.uniform(-noise, noise)
+    return actions
 
 
 def action_space_to_dict(aspace):
@@ -89,6 +101,9 @@ def generate_data():
     print("==> Model:", agent.__class__.__name__)
     print("Amount of buildings:", amount_buildings)
     print("Buildings used:", Constants.buildings_to_use)
+    if Constants.range_of_noise != 0:
+        print("Probability to add noise:", Constants.probability_to_add_noise)
+        print("Range of noise:", Constants.range_of_noise)
     start_timestep = env.schema['simulation_start_time_step']
     end_timestep = env.schema['simulation_end_time_step']
     print("Environment simulation from", start_timestep, "to", end_timestep)
@@ -102,6 +117,10 @@ def generate_data():
     actions = agent.register_reset(obs_dict)
     agent_time_elapsed += time.perf_counter() - step_start
 
+    noise = Constants.range_of_noise[0]
+    noise_to_add_each_episode = (Constants.range_of_noise[1] - Constants.range_of_noise[0])/Constants.episodes
+    print("Noise for this episode:", noise)
+
     episodes_completed = 0
     sequences_completed = 0
     current_step_total = 0
@@ -114,6 +133,9 @@ def generate_data():
         while True:
             current_step_in_sequence += 1
             current_step_total += 1
+
+            actions = add_noise(actions, noise)  # add noise to some action
+
             next_observations, reward, done, _ = env.step(actions)
             # ACTION [-1,1] attempts to decrease or increase the electricity stored in the battery by an amount
             # equivalent to action times its maximum capacity
@@ -179,6 +201,9 @@ def generate_data():
                 step_start = time.perf_counter()
                 actions = agent.register_reset(obs_dict)
                 agent_time_elapsed += time.perf_counter() - step_start
+
+                noise += noise_to_add_each_episode
+                print("Noise for this episode:", noise)
             else:
                 step_start = time.perf_counter()
                 actions = agent.compute_action(next_observations)
@@ -198,6 +223,10 @@ def generate_data():
 
     print(f"Total time taken by agent: {agent_time_elapsed}s")
     print("Total number of steps:", current_step_total)
+    print("Episodes:", Constants.episodes)
+    if Constants.range_of_noise != 0:
+        print("Probability to add noise:", Constants.probability_to_add_noise)
+        print("Range of noise:", Constants.range_of_noise)
     if len(episode_metrics) > 0:
         price_cost = np.mean([e['price_cost'] for e in episode_metrics])
         emission_cost = np.mean([e['emmision_cost'] for e in episode_metrics])
