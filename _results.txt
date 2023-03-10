@@ -1,3 +1,14 @@
-==> Model: TobiTob/decision_transformer_f_24
-Target Return: -3000
-Trained Sequence Length: 24
+==> Model: OneActionAgent
+Action to perform: [0]
+Environment simulation from 0 to 8759
+Buildings used: [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+1 [-10836.57211454  -7378.44644696  -9296.69815689  -7673.14455878
+ -15972.43934498  -9914.11842709  -6121.71911932 -10486.19151235
+ -10948.83591078  -8939.75455297 -11685.77256696 -19023.16913804]
+Reward mean: -10689.738487471375
+Total time taken by agent: 0.028350792890705634s
+Total number of steps: 8759
+Average Price Cost: 1.0
+Average Emission Cost: 1.0
+Average Grid Cost: 1.0
+==> Score: 1.0

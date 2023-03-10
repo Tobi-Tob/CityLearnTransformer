@@ -25,14 +25,14 @@ class Constants:
     action_dim = 1  # size of action space
 
     #  [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
-    buildings_to_use = [6, 7, 8, 9, 10]
+    buildings_to_use = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
 
     env = init_environment(buildings_to_use)
 
     """Model Constants"""
 
-    load_model = "TobiTob/decision_transformer_f_24"
-    TARGET_RETURN = -3000
+    load_model = "TobiTob/decision_transformer_fr_24"
+    TARGET_RETURN = -9000
     scale = 1000.0  # normalization for rewards/returns
     trained_sequence_length = 24
     force_download = False
@@ -153,12 +153,12 @@ def evaluate():
         sys.stdout = f
         print("==> Model:", Constants.load_model)
         print("Target Return:", Constants.TARGET_RETURN)
-        #print("Context Length:", context_length)
+        print("Context Length:", context_length)
         print("Trained Sequence Length:", Constants.trained_sequence_length)
         start_timestep = env.schema['simulation_start_time_step']
         end_timestep = env.schema['simulation_end_time_step']
-        #print("Environment simulation from", start_timestep, "to", end_timestep)
-        #print("Buildings used:", Constants.buildings_to_use)
+        print("Environment simulation from", start_timestep, "to", end_timestep)
+        print("Buildings used:", Constants.buildings_to_use)
         sys.stdout = original_stdout
         if end_timestep - start_timestep >= 4096:
             warnings.warn("Evaluation steps are over 4096")
@@ -229,7 +229,7 @@ def evaluate():
                 episode_metrics.append(metrics)
                 print(f"Episode complete: {episodes_completed} | Latest episode metrics: {metrics}", )
                 sys.stdout = f
-                #print(episodes_completed, episode_return)
+                print(episodes_completed, episode_return)
                 sys.stdout = original_stdout
 
                 # new Initialization and env Reset
@@ -305,15 +305,15 @@ def evaluate():
         print("========================= Evaluation Done ========================")
         print(f"Total time taken by agent: {agent_time_elapsed}s")
         sys.stdout = f
-        #print(f"Total time taken by agent: {agent_time_elapsed}s")
-        #print("Total number of steps:", num_steps_total)
+        print(f"Total time taken by agent: {agent_time_elapsed}s")
+        print("Total number of steps:", num_steps_total)
         if len(episode_metrics) > 0:
             price_cost = np.mean([e['price_cost'] for e in episode_metrics])
             emission_cost = np.mean([e['emmision_cost'] for e in episode_metrics])
             grid_cost = np.mean([e['grid_cost'] for e in episode_metrics])
-            #print("Average Price Cost:", price_cost)
-            #print("Average Emission Cost:", emission_cost)
-            #print("Average Grid Cost:", grid_cost)
+            print("Average Price Cost:", price_cost)
+            print("Average Emission Cost:", emission_cost)
+            print("Average Grid Cost:", grid_cost)
             print("==> Score:", (price_cost + emission_cost + grid_cost) / 3)
             sys.stdout = original_stdout
             print("==> Score:", (price_cost + emission_cost + grid_cost) / 3)

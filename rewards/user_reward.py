@@ -43,7 +43,7 @@ class UserReward(RewardFunction):
         self.electricity_consumption_history.append(self.electricity_consumption)
         self.electricity_consumption_history = self.electricity_consumption_history[-self.max_history_length:]
 
-        return get_reward(self.electricity_consumption,
+        return self.get_reward_optim(self.electricity_consumption,
                                      self.carbon_emission,
                                      self.electricity_price,
                                      list(range(self.agent_count)))
