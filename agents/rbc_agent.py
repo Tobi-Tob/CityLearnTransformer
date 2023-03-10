@@ -60,9 +60,9 @@ class BetterRBCAgent:
         actions = []
         hour = observation[0][2]
 
-        gamma = 0.076
-        delta = 0.201
-        epsilon = 0.77
+        alpha = 0.076
+        beta = 0.201
+        gamma = 0.77
 
         for bi in range(len(observation)):
             solar_generation = observation[bi][21]
@@ -70,18 +70,18 @@ class BetterRBCAgent:
 
             # Daytime: load battery with regard to current solar generation
             if 7 <= hour <= 16:
-                action = gamma * solar_generation
+                action = alpha * solar_generation
 
             # Evening and night: try to use stored energy with regard to current storage level
             else:
-                action = - delta * electrical_storage
+                action = - beta * electrical_storage
 
             #  slow down positive actions near storage limit
             if action > 0:
                 if electrical_storage > 0.99:
                     action = 0
                 elif electrical_storage > 0.7:
-                    action = epsilon * action
+                    action = gamma * action
 
             #  clip actions to [1,-1]
             if action > 1:

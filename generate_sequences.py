@@ -30,13 +30,13 @@ list(
 
 
 class Constants:
-    file_prefix = "fn"
+    file_prefix = "f"
     sequence_length = 24  # should be divisor of environment simulation steps
-    episodes = 10
+    episodes = 1
     state_dim = 28
     action_dim = 1
 
-    probability_to_add_noise = 0.15
+    probability_to_add_noise = 0.0  # 0.2
     range_of_noise = [0, 0.1]
 
     #  [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
@@ -101,7 +101,7 @@ def generate_data():
     print("==> Model:", agent.__class__.__name__)
     print("Amount of buildings:", amount_buildings)
     print("Buildings used:", Constants.buildings_to_use)
-    if Constants.range_of_noise != 0:
+    if Constants.probability_to_add_noise > 0:
         print("Probability to add noise:", Constants.probability_to_add_noise)
         print("Range of noise:", Constants.range_of_noise)
     start_timestep = env.schema['simulation_start_time_step']
@@ -224,7 +224,7 @@ def generate_data():
     print(f"Total time taken by agent: {agent_time_elapsed}s")
     print("Total number of steps:", current_step_total)
     print("Episodes:", Constants.episodes)
-    if Constants.range_of_noise != 0:
+    if Constants.probability_to_add_noise > 0:
         print("Probability to add noise:", Constants.probability_to_add_noise)
         print("Range of noise:", Constants.range_of_noise)
     if len(episode_metrics) > 0:

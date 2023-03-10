@@ -43,15 +43,15 @@ class UserReward(RewardFunction):
         self.electricity_consumption_history.append(self.electricity_consumption)
         self.electricity_consumption_history = self.electricity_consumption_history[-self.max_history_length:]
 
-        return self.get_reward2(self.electricity_consumption,
-                                self.carbon_emission,
-                                self.electricity_price,
-                                list(range(self.agent_count)))
+        return get_reward(self.electricity_consumption,
+                                     self.carbon_emission,
+                                     self.electricity_price,
+                                     list(range(self.agent_count)))
 
-    def get_reward2(self, electricity_consumption: List[float], carbon_emission: List[float],
-                    electricity_price: List[float],
-                    agent_ids: List[int]) -> List[float]:
-
+    def get_reward_optim(self, electricity_consumption: List[float], carbon_emission: List[float],
+                         electricity_price: List[float],
+                         agent_ids: List[int]) -> List[float]:
+        """ New Reward function """
         alpha = 4.98866624
         price_cost = - alpha * np.array(electricity_price).clip(min=0)
 
@@ -68,14 +68,4 @@ class UserReward(RewardFunction):
         load_factor_cost = - delta * np.array(electricity_consumption).clip(min=0) ** 2
 
         reward = 1 / 3 * price_cost + 1 / 3 * emission_cost + 1 / 6 * ramping_cost + 1 / 6 * load_factor_cost
-        return reward
-
-    def get_reward1(self, electricity_consumption: List[float], carbon_emission: List[float],
-                    electricity_price: List[float],
-                    agent_ids: List[int]) -> List[float]:
-
-        price_cost = - np.array(electricity_price).clip(min=0)
-        emission_cost = - np.array(carbon_emission).clip(min=0)
-
-        reward = price_cost + emission_cost
         return reward
