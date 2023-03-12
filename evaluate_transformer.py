@@ -31,28 +31,28 @@ class Constants:
 
     """Model Constants"""
 
-    load_model = "TobiTob/decision_transformer_fr_24"
+    load_model = "TobiTob/decision_transformer_rb_108"
     TARGET_RETURN = -9000
     scale = 1000.0  # normalization for rewards/returns
-    trained_sequence_length = 24
+    trained_sequence_length = 108
     force_download = False
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     # mean and std computed from training dataset these are available in the model card for each model.
     state_mean = np.array(
-        [6.524725274725275, 4.0, 12.5, 16.82414151013116, 16.824221638205287, 16.824931345033995, 16.826831528227846,
-         72.99347527472527, 72.99690934065934, 72.99771062271063, 72.99793956043956, 208.09832875457874,
-         208.09832875457874, 207.99828296703296, 208.04052197802199, 201.2047847985348, 201.2047847985348,
-         200.9787087912088, 201.07337454212455, 0.15644727026678676, 1.0649622487535593, 0.698845768454032,
-         0.2907827007663062, 0.4024903807019989, 0.2730940908121948, 0.2730940908121948, 0.2730940908121948,
-         0.2730940908121948])
+        [6.525377229080933, 3.9965706447187928, 12.493141289437586, 16.8294238947165, 16.83277323183863,
+         16.832978993068288, 16.83132147134904, 73.00342935528121, 72.9951989026063, 72.99851394604481,
+         73.00365797896661, 208.04229538180155, 208.54000914494742, 208.2385688157293, 208.0844764517604,
+         201.06561499771377, 201.45964791952446, 201.14494741655236, 201.16015089163238, 0.15645109651636657,
+         1.064899009497194, 0.6986772408784298, 0.3313404241507644, 0.4077616037956171, 0.2730212594102685,
+         0.27309441899477915, 0.2732041583715452, 0.2730212594102685])
     state_std = np.array(
-        [3.4524955084850806, 2.000001, 6.922187552431729, 3.5583904884633704, 3.5584332104834484, 3.559720599742466,
-         3.562993303420063, 16.49362637843077, 16.495771758046534, 16.497863950643264, 16.500000871352388,
-         292.60064712158606, 292.6006471215861, 292.5436886390131, 292.5922471173383, 296.26243575541076,
-         296.2624357554107, 296.1515750498725, 296.1759105708973, 0.03534180229853935, 0.8881956546478821,
-         1.016910381344171, 0.32331672915476983, 0.9217616005957111, 0.11775969542702672, 0.11775969542702658,
-         0.11775969542702643, 0.11775969542702633])
+        [3.450171573159928, 2.001712005636135, 6.92327398233949, 3.5596897251772144, 3.5646205760630805,
+         3.564661328903998, 3.5629555779581854, 16.487944999744574, 16.488533956632814, 16.489210523608353,
+         16.4900801936759, 292.59032298502507, 292.8921802164789, 292.7364555350893, 292.63880079172566,
+         296.18097129089966, 296.2988105487303, 296.1470819086515, 296.2052433033199, 0.0353246517460152,
+         0.8880000093042892, 1.016721387846366, 0.3163072673002249, 0.9521014592108168, 0.11769530683838125,
+         0.11776176405898234, 0.11786129447996481, 0.11769530683838152])
 
     start_timestep = env.schema['simulation_start_time_step']
     end_timestep = env.schema['simulation_end_time_step']
@@ -76,7 +76,8 @@ def calc_sequence_target_return(return_to_go_list, num_steps_in_episode):
         if timesteps_left < Constants.trained_sequence_length:
             target_returns_for_next_sequence.append(required_reward_per_timestep * timesteps_left / Constants.scale)
         else:
-            target_returns_for_next_sequence.append(required_reward_per_timestep * Constants.trained_sequence_length / Constants.scale)
+            target_returns_for_next_sequence.append(
+                required_reward_per_timestep * Constants.trained_sequence_length / Constants.scale)
     return target_returns_for_next_sequence
 
 
@@ -132,7 +133,8 @@ def evaluate():
         state_bi = torch.from_numpy(np.array(state_list_of_lists[bi])).reshape(1, Constants.state_dim).to(
             device=Constants.device,
             dtype=torch.float32)
-        target_return_bi = torch.tensor(target_returns_for_next_sequence[bi], device=Constants.device, dtype=torch.float32).reshape(1, 1)
+        target_return_bi = torch.tensor(target_returns_for_next_sequence[bi], device=Constants.device,
+                                        dtype=torch.float32).reshape(1, 1)
         action_bi = torch.zeros((0, Constants.action_dim), device=Constants.device, dtype=torch.float32)
         reward_bi = torch.zeros(0, device=Constants.device, dtype=torch.float32)
 
@@ -272,7 +274,8 @@ def evaluate():
                     state_list_of_tensors[bi] = torch.cat([state_list_of_tensors[bi], cur_state], dim=0)
                     reward_list_of_tensors[bi][-1] = reward_list_of_lists[bi]
 
-                    pred_return = target_return_list_of_tensors[bi][0, -1] - (reward_list_of_lists[bi] / Constants.scale)
+                    pred_return = target_return_list_of_tensors[bi][0, -1] - (
+                                reward_list_of_lists[bi] / Constants.scale)
                     target_return_list_of_tensors[bi] = torch.cat(
                         [target_return_list_of_tensors[bi], pred_return.reshape(1, 1)], dim=1)
                     return_to_go_list[bi] = return_to_go_list[bi] - reward_list_of_lists[bi]
