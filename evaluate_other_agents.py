@@ -24,8 +24,8 @@ class Constants:
 
     env = init_environment(buildings_to_use)
 
-    # agent = RandomAgent()
-    agent = OneActionAgent([0])
+    agent = RandomAgent()
+    # agent = OneActionAgent([0])
     # agent = BasicRBCAgent()
     # agent = BetterRBCAgent()
     # agent = OrderEnforcingAgent()

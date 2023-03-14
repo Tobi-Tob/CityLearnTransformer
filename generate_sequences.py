@@ -30,25 +30,25 @@ list(
 
 
 class Constants:
-    file_prefix = "f"
-    sequence_length = 24  # should be divisor of environment simulation steps
+    file_prefix = "random"
+    sequence_length = 230  # should be divisor of environment simulation steps
     episodes = 1
     state_dim = 28
     action_dim = 1
 
     probability_to_add_noise = 0.0  # 0.2
-    range_of_noise = [0, 0.1]
+    range_of_noise = [0, 0.08]
 
     #  [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
     buildings_to_use = [1, 2, 3, 4, 5]
 
     env = init_environment(buildings_to_use)
 
-    # agent = RandomAgent()
+    agent = RandomAgent()
     # agent = OneActionAgent([0])
     # agent = BasicRBCAgent()
     # agent = BetterRBCAgent()
-    agent = OrderEnforcingAgent()
+    # agent = OrderEnforcingAgent()
 
     print_sequences = False
 
@@ -203,7 +203,8 @@ def generate_data():
                 agent_time_elapsed += time.perf_counter() - step_start
 
                 noise += noise_to_add_each_episode
-                print("Noise for this episode:", noise)
+                if Constants.probability_to_add_noise > 0:
+                    print("Noise for this episode:", noise)
             else:
                 step_start = time.perf_counter()
                 actions = agent.compute_action(next_observations)

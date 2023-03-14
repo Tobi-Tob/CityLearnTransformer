@@ -1,15 +1,15 @@
-==> Model: TobiTob/decision_transformer_rb_108
+==> Model: TobiTob/decision_transformer_random_230
 Target Return: -9000
 Context Length: 24
-Trained Sequence Length: 108
+Trained Sequence Length: 230
 Environment simulation from 0 to 8759
 Buildings used: [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
-1 [ -9222.13184708  -7214.25252048  -7689.92475115  -5924.83735207
- -13918.29768279  -8592.41960495  -9906.80310271  -8837.59244521
- -10201.55950628  -9649.70823864  -9284.5802243  -16680.21139968]
-Total time taken by agent: 895.0418695578628s
+1 [-11012.37711602  -7700.51545521  -9500.95606223  -7963.16245004
+ -16148.17479481 -10155.16716304  -6650.94611107 -10718.35583702
+ -11239.49863377  -9403.55981139 -11886.35149866 -19111.0474446 ]
+Total time taken by agent: 908.7252676066346s
 Total number of steps: 8759
-Average Price Cost: 0.7814634643993957
-Average Emission Cost: 0.9248566702972016
-Average Grid Cost: 0.9039366211496086
-==> Score: 0.8700855852820686
+Average Price Cost: 1.010632077181191
+Average Emission Cost: 1.0157449479483396
+Average Grid Cost: 1.096325439427658
+==> Score: 1.040900821519063
