@@ -31,28 +31,28 @@ class Constants:
 
     """Model Constants"""
 
-    load_model = "TobiTob/decision_transformer_random_230"
+    load_model = "TobiTob/decision_transformer_fr_24"
     TARGET_RETURN = -9000
     scale = 1000.0  # normalization for rewards/returns
-    trained_sequence_length = 230
+    evaluation_interval = 24
     force_download = True
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     # mean and std computed from training dataset these are available in the model card for each model.
     state_mean = np.array(
-        [6.5249427917620135, 3.9993135011441647, 12.49771167048055, 16.825446250727847, 16.82580094184701,
-         16.828741445148562, 16.828180804459944, 72.99828375286042, 73.0012585812357, 72.99359267734553,
-         73.00102974828376, 208.00308924485125, 208.0545766590389, 208.2866132723112, 207.94530892448512,
-         201.11270022883295, 201.12254004576658, 201.15926773455377, 200.98135011441647, 0.15644143459640733,
-         1.064985996011147, 0.6985259305737326, 0.5077011139382186, 0.49160775358187564, 0.27306979145658644,
-         0.27306979145658644, 0.27306979145658644, 0.27306979145658644])
-    state_std = np.array([3.4517203419362, 2.000572882797276, 6.924445762360648, 3.5581132080274425, 3.558410500805662,
-                          3.563460666518717, 3.562742154586059, 16.491663737463313, 16.493405084016068,
-                          16.495564654312346, 16.49694264406781, 292.5675403707197, 292.54446787504037,
-                          292.792528944882, 292.55912445362566, 296.2258939141665, 296.2202986371211, 296.2051386297462,
-                          296.1393568330303, 0.03533480921331586, 0.8881741764856719, 1.0167875215772866,
-                          0.40298540713872427, 2.6547702496117305, 0.11773822184102951, 0.11773822184102949,
-                          0.1177382218410294, 0.11773822184102911])
+        [6.524725274725275, 4.0, 12.5, 16.82414151013116, 16.824221638205287, 16.824931345033995, 16.826831528227846,
+         72.99347527472527, 72.99690934065934, 72.99771062271063, 72.99793956043956, 208.09832875457874,
+         208.09832875457874, 207.99828296703296, 208.04052197802199, 201.2047847985348, 201.2047847985348,
+         200.9787087912088, 201.07337454212455, 0.15644727026678676, 1.0649622487535593, 0.698845768454032,
+         0.2904772969099631, 0.40247679049702895, 0.2730940908121948, 0.2730940908121948, 0.2730940908121948,
+         0.2730940908121948])
+    state_std = np.array(
+        [3.4524955084850806, 2.000001, 6.922187552431729, 3.5583904884633704, 3.5584332104834484, 3.559720599742466,
+         3.562993303420063, 16.49362637843077, 16.495771758046534, 16.497863950643264, 16.500000871352388,
+         292.60064712158606, 292.6006471215861, 292.5436886390131, 292.5922471173383, 296.26243575541076,
+         296.2624357554107, 296.1515750498725, 296.1759105708973, 0.03534180229853935, 0.8881956546478821,
+         1.016910381344171, 0.32314600746622574, 0.9214611934794803, 0.11775969542702672, 0.11775969542702658,
+         0.11775969542702643, 0.11775969542702633])
 
     start_timestep = env.schema['simulation_start_time_step']
     end_timestep = env.schema['simulation_end_time_step']
@@ -73,11 +73,11 @@ def calc_sequence_target_return(return_to_go_list, num_steps_in_episode):
     target_returns_for_next_sequence = []
     for bi in range(len(return_to_go_list)):
         required_reward_per_timestep = return_to_go_list[bi] / timesteps_left
-        if timesteps_left < Constants.trained_sequence_length:
+        if timesteps_left < Constants.evaluation_interval:
             target_returns_for_next_sequence.append(required_reward_per_timestep * timesteps_left / Constants.scale)
         else:
             target_returns_for_next_sequence.append(
-                required_reward_per_timestep * Constants.trained_sequence_length / Constants.scale)
+                required_reward_per_timestep * Constants.evaluation_interval / Constants.scale)
     return target_returns_for_next_sequence
 
 
@@ -99,7 +99,7 @@ def evaluate():
 
     print("Target Return:", Constants.TARGET_RETURN)
     print("Context Length:", context_length)
-    print("Trained Sequence Length:", Constants.trained_sequence_length)
+    print("Evaluation Interval Length:", Constants.evaluation_interval)
     start_timestep = env.schema['simulation_start_time_step']
     end_timestep = env.schema['simulation_end_time_step']
     print("Environment simulation from", start_timestep, "to", end_timestep)
@@ -156,7 +156,7 @@ def evaluate():
         print("==> Model:", Constants.load_model)
         print("Target Return:", Constants.TARGET_RETURN)
         print("Context Length:", context_length)
-        print("Trained Sequence Length:", Constants.trained_sequence_length)
+        print("Evaluation Interval Length:", Constants.evaluation_interval)
         start_timestep = env.schema['simulation_start_time_step']
         end_timestep = env.schema['simulation_end_time_step']
         print("Environment simulation from", start_timestep, "to", end_timestep)
@@ -166,7 +166,7 @@ def evaluate():
             warnings.warn("Evaluation steps are over 4096")
 
         while True:
-            if num_steps_in_sequence >= Constants.trained_sequence_length:  # if Sequence complete
+            if num_steps_in_sequence >= Constants.evaluation_interval:  # if Sequence complete
                 sequences_completed += 1
                 num_steps_in_sequence = 0
 
