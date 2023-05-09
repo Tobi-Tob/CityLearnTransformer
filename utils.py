@@ -1,3 +1,5 @@
+import os
+
 from citylearn.citylearn import CityLearnEnv
 from citylearn.utilities import read_json
 
@@ -27,3 +29,17 @@ def init_environment(buildings_to_use):
 
     env = CityLearnEnv(schema)
     return env
+
+
+def get_string_file_size(file):
+    file_size = os.stat(file).st_size
+    if file_size > 1e+9:
+        string_byte = "(" + str(round(file_size / 1e+9)) + " GB)"
+    elif file_size > 1e+6:
+        string_byte = "(" + str(round(file_size / 1e+6)) + " MB)"
+    elif file_size > 1e+3:
+        string_byte = "(" + str(round(file_size / 1e+3)) + " kB)"
+    else:
+        string_byte = "(" + str(round(file_size)) + " Byte)"
+
+    return string_byte

@@ -12,6 +12,7 @@ from agents.random_agent import RandomAgent
 from agents.rbc_agent import BasicRBCAgent, BetterRBCAgent
 
 from utils import init_environment
+from utils import get_string_file_size
 
 """
 This file is used to generate offline data for a decision transformer.
@@ -269,12 +270,7 @@ def generate_data():
         pickle.dump(dataset, f)
 
     print("========================= Writing Completed ============================")
-    file_size = os.stat(file_path).st_size
-    if file_size > 1e+6:
-        string_byte = "(" + str(round(file_size / 1e+6)) + " MB)"
-    else:
-        string_byte = "(" + str(round(file_size / 1e+3)) + " kB)"
-    print("==> Data saved in", file_name, string_byte)
+    print("==> Data saved in", file_name, get_string_file_size(file_path))
 
 
 if __name__ == '__main__':
