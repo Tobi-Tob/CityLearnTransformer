@@ -17,7 +17,7 @@ list(
 
 if __name__ == '__main__':
 
-    file = "./data/f_50x5x175.pkl"
+    file = "./data/random_230x5x38.pkl"
     with open(file, "rb") as f:
         data = pickle.load(f)
 
@@ -73,4 +73,3 @@ if __name__ == '__main__':
             string_byte = "(" + str(round(file_size / 1e+3)) + " kB)"
         print(file, string_byte)
 
-        print(data[800]['actions'][:])
