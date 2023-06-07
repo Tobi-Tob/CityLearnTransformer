@@ -9,7 +9,7 @@ import time
 from agents.one_action_agent import OneActionAgent
 from agents.orderenforcingwrapper import OrderEnforcingAgent
 from agents.random_agent import RandomAgent
-from agents.rbc_agent import BasicRBCAgent, BetterRBCAgent
+from agents.rbc_agent import BasicRBCAgent, RBCAgent1
 
 from utils import init_environment
 from utils import get_string_file_size

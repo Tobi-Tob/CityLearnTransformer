@@ -37,7 +37,7 @@ class BasicRBCAgent:
         return actions
 
 
-class BetterRBCAgent:
+class RBCAgent1:
 
     def __init__(self):
         self.action_dim = 1
@@ -50,9 +50,9 @@ class BetterRBCAgent:
 
     def compute_action(self, obs):
         """Get observation return action"""
-        return self.better_rbc_policy(obs)
+        return self.rbc_policy_1(obs)
 
-    def better_rbc_policy(self, observation):
+    def rbc_policy_1(self, observation):
         """
         Rule based policy depending on daytime, solar_generation and electrical_storage.
         Parameters determined by manual search.
@@ -88,6 +88,60 @@ class BetterRBCAgent:
                 action = 1
             if action < -1:
                 action = -1
+
+            actions.append(np.array([action]))
+
+        return actions
+
+
+class RBCAgent2:
+
+    def __init__(self):
+        self.action_dim = 1
+        self.direct_solar_prediction = [None, None, None, None, None]
+        self.diffuse_solar_prediction = [None, None, None, None, None]
+
+    def register_reset(self, obs_dict):
+        """Get the first observation after env reset, return action"""
+        obs = obs_dict["observation"]
+        self.direct_solar_prediction = [None, None, None, None, None]
+        self.diffuse_solar_prediction = [None, None, None, None, None]
+
+        return self.compute_action(obs)
+
+    def compute_action(self, obs):
+        """Get observation return action"""
+        self.direct_solar_prediction.append(obs[0][16])
+        self.diffuse_solar_prediction.append(obs[0][12])
+
+        return self.rbc_policy_2(obs)
+
+    def rbc_policy_2(self, observation):
+        """
+        Rule based policy depending on daytime, solar_generation and electrical_storage.
+        Parameters determined by manual search.
+        """
+        actions = []
+
+        hour = observation[0][2]
+        day_type = observation[0][1]
+        month = observation[0][0]
+        direct_solar = observation[0][15]
+        direct_solar_predicted = self.direct_solar_prediction.pop(0)
+        diffuse_solar = observation[0][11]
+        diffuse_solar_predicted = self.diffuse_solar_prediction.pop(0)
+
+        alpha = 0.0027
+        if diffuse_solar_predicted is None:
+            solar_generation_predicted = alpha * diffuse_solar
+        else:
+            solar_generation_predicted = alpha * diffuse_solar_predicted
+
+        for bi in range(len(observation)):
+            solar_generation = observation[bi][21]
+            electrical_storage = observation[bi][22]
+
+            action = solar_generation_predicted
 
             actions.append(np.array([action]))
 

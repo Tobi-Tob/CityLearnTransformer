@@ -6,7 +6,7 @@ import time
 from utils import init_environment
 from agents.random_agent import RandomAgent
 from agents.one_action_agent import OneActionAgent
-from agents.rbc_agent import BasicRBCAgent, BetterRBCAgent
+from agents.rbc_agent import BasicRBCAgent, RBCAgent1, RBCAgent2
 from agents.orderenforcingwrapper import OrderEnforcingAgent
 
 """
@@ -20,17 +20,18 @@ class Constants:
     state_dim = 28  # size of state space
     action_dim = 1  # size of action space
     # [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
-    buildings_to_use = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+    buildings_to_use = [1, 2, 3, 4, 5]
 
     env = init_environment(buildings_to_use)
 
-    agent = RandomAgent()
+    # agent = RandomAgent()
     # agent = OneActionAgent([0])
     # agent = BasicRBCAgent()
-    # agent = BetterRBCAgent()
+    # agent = RBCAgent1()
+    agent = RBCAgent2()
     # agent = OrderEnforcingAgent()
 
-    print_interactions = False
+    print_interactions = True
 
 
 def action_space_to_dict(aspace):
@@ -102,7 +103,7 @@ def evaluate():
                 if Constants.print_interactions:
                     print(num_steps, "Action", actions[-1])
                     print(num_steps, "Reward", reward[-1])
-                    print(num_steps + 1, "State", observations[-1])
+                    print(num_steps + 1, "State", np.array([observations[0][21], observations[1][21], observations[2][21], observations[3][21], observations[4][21]]))
 
                 episode_return += reward
                 if done:
