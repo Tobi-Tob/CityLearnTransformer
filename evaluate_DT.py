@@ -23,14 +23,6 @@ class Constants:
     state_dim = 28  # size of state space
     action_dim = 1  # size of action space
 
-    #  [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
-    train_buildings = [1, 2, 3, 4, 5]
-    validation_buildings = [6, 7, 8, 9, 10]
-    test_buildings = [11, 12, 13, 14, 15, 16, 17]
-    buildings_to_use = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
-
-    env = init_environment(buildings_to_use)
-
     """Model Constants"""
 
     scale = 1000.0  # normalization for rewards/returns
@@ -53,10 +45,6 @@ class Constants:
          1.016910381344171, 0.32314600746622574, 0.9214611934794803, 0.11775969542702672, 0.11775969542702658,
          0.11775969542702643, 0.11775969542702633])
 
-    start_timestep = env.schema['simulation_start_time_step']
-    end_timestep = env.schema['simulation_end_time_step']
-    total_time_steps = end_timestep - start_timestep
-
 
 def preprocess_states(state_list_of_lists, amount_buildings):
     for bi in range(amount_buildings):
@@ -67,8 +55,8 @@ def preprocess_states(state_list_of_lists, amount_buildings):
     return state_list_of_lists
 
 
-def calc_sequence_target_return(return_to_go_list, num_steps_in_episode, evaluation_interval):
-    timesteps_left = Constants.total_time_steps - num_steps_in_episode
+def calc_sequence_target_return(return_to_go_list, num_steps_in_episode, evaluation_interval, total_time_steps):
+    timesteps_left = total_time_steps - num_steps_in_episode
     target_returns_for_next_sequence = []
     for bi in range(len(return_to_go_list)):
         required_reward_per_timestep = return_to_go_list[bi] / timesteps_left
@@ -80,16 +68,27 @@ def calc_sequence_target_return(return_to_go_list, num_steps_in_episode, evaluat
     return target_returns_for_next_sequence
 
 
-def evaluate(DT_model, TR, evaluation_interval):
+def evaluate(DT_model, buildings_to_use, TR, evaluation_interval):
     print("========================= Start Evaluation ========================")
     # Check current working directory.
     retval = os.getcwd()
     print("Current working directory %s" % retval)
 
-    env = Constants.env
+    if buildings_to_use == "train":
+        buildings_to_use = [1, 2, 3, 4, 5]
+    elif buildings_to_use == "validation":
+        buildings_to_use = [6, 7, 8, 9, 10]
+    elif buildings_to_use == "test":
+        buildings_to_use = [11, 12, 13, 14, 15, 16, 17]
+    env = init_environment(buildings_to_use)
 
     agent = MyDecisionTransformer(load_from=DT_model, force_download=Constants.force_download,
                                   device=Constants.device)
+
+    start_timestep = env.schema['simulation_start_time_step']
+    end_timestep = env.schema['simulation_end_time_step']
+    total_time_steps = end_timestep - start_timestep
+
     print("Using device:", Constants.device)
     print("==> Model:", DT_model)
 
@@ -115,7 +114,7 @@ def evaluate(DT_model, TR, evaluation_interval):
     episode_metrics = []
 
     return_to_go_list = [TR] * amount_buildings
-    target_returns_for_next_sequence = calc_sequence_target_return(return_to_go_list, num_steps_in_episode, evaluation_interval)
+    target_returns_for_next_sequence = calc_sequence_target_return(return_to_go_list, num_steps_in_episode, evaluation_interval, total_time_steps)
 
     # Initialize Tensors
     state_list_of_lists = env.reset()
@@ -159,17 +158,15 @@ def evaluate(DT_model, TR, evaluation_interval):
         start_timestep = env.schema['simulation_start_time_step']
         end_timestep = env.schema['simulation_end_time_step']
         print("Environment simulation from", start_timestep, "to", end_timestep)
-        print("Buildings used:", Constants.buildings_to_use)
+        print("Buildings used:", buildings_to_use)
         sys.stdout = original_stdout
-        if end_timestep - start_timestep >= 4096:
-            warnings.warn("Evaluation steps are over 4096")
 
         while True:
             if num_steps_in_sequence >= evaluation_interval:  # if Sequence complete
                 sequences_completed += 1
                 num_steps_in_sequence = 0
 
-                target_returns_for_next_sequence = calc_sequence_target_return(return_to_go_list, num_steps_in_episode, evaluation_interval)
+                target_returns_for_next_sequence = calc_sequence_target_return(return_to_go_list, num_steps_in_episode, evaluation_interval, total_time_steps)
 
                 #  Reset History and only save last state
                 last_state_list_of_tensor = []
@@ -238,7 +235,7 @@ def evaluate(DT_model, TR, evaluation_interval):
                 num_steps_in_sequence = 0
 
                 return_to_go_list = [TR] * amount_buildings
-                target_returns_for_next_sequence = calc_sequence_target_return(return_to_go_list, num_steps_in_episode)
+                target_returns_for_next_sequence = calc_sequence_target_return(return_to_go_list, num_steps_in_episode, evaluation_interval, total_time_steps)
 
                 episode_return = np.zeros(amount_buildings)
                 state_list_of_lists = env.reset()
@@ -324,6 +321,14 @@ def evaluate(DT_model, TR, evaluation_interval):
 
 if __name__ == '__main__':
     load_model = "TobiTob/decision_transformer_fr_24"
+    buildings_to_use = "validation"
     TARGET_RETURN = -9000
     evaluation_interval = 24
-    evaluate(load_model, TARGET_RETURN, evaluation_interval)
+    evaluate(load_model, buildings_to_use, TARGET_RETURN, evaluation_interval)
+
+"""
+Run in console:
+
+from evaluate_DT import evaluate
+evaluate("TobiTob/decision_transformer_fr_24", "validation", -9000, 24)
+"""
