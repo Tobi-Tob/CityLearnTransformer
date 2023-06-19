@@ -1,4 +1,3 @@
-
 import os
 import pathlib
 import warnings
@@ -17,7 +16,6 @@ This file is used to evaluate a decision transformer loaded form https://hugging
 
 
 class Constants:
-    file_to_save = '_results.txt'
     """Environment Constants"""
     episodes = 1  # amount of environment resets
     state_dim = 28  # size of state space
@@ -68,7 +66,30 @@ def calc_sequence_target_return(return_to_go_list, num_steps_in_episode, evaluat
     return target_returns_for_next_sequence
 
 
-def evaluate(DT_model, buildings_to_use, TR, evaluation_interval):
+def evaluate(DT_model, buildings_to_use, TR, evaluation_interval, simulation_start_end=None, file_to_save='_results.txt'):
+    r"""Evaluates a DT model in the environment
+
+            Parameters
+            ----------
+            DT_model: str
+                The model id of a pretrained model hosted inside a model repo on huggingface,
+                example: 'TobiTob/decision_transformer_fr_24'.
+            buildings_to_use: str
+                String to define which buildings are used in the environment.
+                One of: "train", "validation", "test"
+            TR: int
+                Target Return, hyperparameter of a DT model.
+            evaluation_interval: int
+                The simulation is split into intervals of length evaluation_interval.
+                For a new interval, a partition of the TR is calculated and given to the model.
+                Also, the state, action, reward history is reset for each interval.
+                Large Intervals may cause memory problems.
+            simulation_start_end: list[int]
+                List to define start and end time step of the simulation, example: [0,8759].
+            file_to_save: str
+                Name of a file to save the results in, example: '_results.txt'.
+
+    """
     print("========================= Start Evaluation ========================")
     # Check current working directory.
     retval = os.getcwd()
@@ -80,7 +101,7 @@ def evaluate(DT_model, buildings_to_use, TR, evaluation_interval):
         buildings_to_use = [6, 7, 8, 9, 10]
     elif buildings_to_use == "test":
         buildings_to_use = [11, 12, 13, 14, 15, 16, 17]
-    env = init_environment(buildings_to_use)
+    env = init_environment(buildings_to_use, simulation_start_end)
 
     agent = MyDecisionTransformer(load_from=DT_model, force_download=Constants.force_download,
                                   device=Constants.device)
@@ -149,7 +170,7 @@ def evaluate(DT_model, buildings_to_use, TR, evaluation_interval):
     # print(timesteps) enthält einen Tensor mit 0: tensor([[0]])
 
     original_stdout = sys.stdout
-    with open(Constants.file_to_save, 'w') as f:
+    with open(file_to_save, 'w') as f:
         sys.stdout = f
         print("==> Model:", DT_model)
         print("Target Return:", TR)
@@ -166,7 +187,8 @@ def evaluate(DT_model, buildings_to_use, TR, evaluation_interval):
                 sequences_completed += 1
                 num_steps_in_sequence = 0
 
-                target_returns_for_next_sequence = calc_sequence_target_return(return_to_go_list, num_steps_in_episode, evaluation_interval, total_time_steps)
+                target_returns_for_next_sequence = calc_sequence_target_return(return_to_go_list, num_steps_in_episode, evaluation_interval,
+                                                                               total_time_steps)
 
                 #  Reset History and only save last state
                 last_state_list_of_tensor = []
@@ -235,7 +257,8 @@ def evaluate(DT_model, buildings_to_use, TR, evaluation_interval):
                 num_steps_in_sequence = 0
 
                 return_to_go_list = [TR] * amount_buildings
-                target_returns_for_next_sequence = calc_sequence_target_return(return_to_go_list, num_steps_in_episode, evaluation_interval, total_time_steps)
+                target_returns_for_next_sequence = calc_sequence_target_return(return_to_go_list, num_steps_in_episode, evaluation_interval,
+                                                                               total_time_steps)
 
                 episode_return = np.zeros(amount_buildings)
                 state_list_of_lists = env.reset()
@@ -271,7 +294,7 @@ def evaluate(DT_model, buildings_to_use, TR, evaluation_interval):
                     reward_list_of_tensors[bi][-1] = reward_list_of_lists[bi]
 
                     pred_return = target_return_list_of_tensors[bi][0, -1] - (
-                                reward_list_of_lists[bi] / Constants.scale)
+                            reward_list_of_lists[bi] / Constants.scale)
                     target_return_list_of_tensors[bi] = torch.cat(
                         [target_return_list_of_tensors[bi], pred_return.reshape(1, 1)], dim=1)
                     return_to_go_list[bi] = return_to_go_list[bi] - reward_list_of_lists[bi]
@@ -316,15 +339,12 @@ def evaluate(DT_model, buildings_to_use, TR, evaluation_interval):
             print("==> Score:", (price_cost + emission_cost + grid_cost) / 3)
             sys.stdout = original_stdout
             print("==> Score:", (price_cost + emission_cost + grid_cost) / 3)
-        print("Evaluation saved in:", str(pathlib.Path(__file__).parent.resolve()) + '/' + Constants.file_to_save)
+        print("Evaluation saved in:", str(pathlib.Path(__file__).parent.resolve()) + '/' + file_to_save)
 
 
 if __name__ == '__main__':
-    load_model = "TobiTob/decision_transformer_fr_24"
-    buildings_to_use = "validation"
-    TARGET_RETURN = -9000
-    evaluation_interval = 24
-    evaluate(load_model, buildings_to_use, TARGET_RETURN, evaluation_interval)
+    evaluate(DT_model="TobiTob/decision_transformer_fr_24", buildings_to_use="validation",
+             TR=-9000, evaluation_interval=24, simulation_start_end=[0, 8759])
 
 """
 Run in console:

@@ -4,17 +4,22 @@ from citylearn.citylearn import CityLearnEnv
 from citylearn.utilities import read_json
 
 
-def init_environment(buildings_to_use):
+def init_environment(buildings_to_use, simulation_start_end=None):
     r"""Initialize `CityLearnEnv` and returns the environment
 
         Parameters
         ----------
         buildings_to_use: list[int]
             List to define which buildings are used in the environment, example: [1,2,4,17].
+        simulation_start_end: list[int]
+            List to define start and end time step, example: [0,8759].
 
         """
     schema_path = './data/citylearn_challenge_2022_phase_all/schema.json'
     schema = read_json(schema_path)
+    if simulation_start_end is not None:
+        schema['simulation_start_time_step'] = simulation_start_end[0]
+        schema['simulation_end_time_step'] = simulation_start_end[1]
     dict_buildings = schema['buildings']
 
     # set all buildings to include=false

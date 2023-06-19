@@ -1,6 +1,13 @@
-==> Model: RBCAgent2
-Environment simulation from 0 to 8759
-Buildings used: [1, 2, 3, 4, 5]
-Total time taken by agent: 0.0313727000000501s
-Total number of steps: 2733
-Evaluation saved in: C:\Daten\CityLearnTransformer/_results.txt
+==> Model: TobiTob/decision_transformer_fr_24
+Target Return: -9000
+Context Length: 24
+Evaluation Interval Length: 24
+Environment simulation from 2 to 50
+Buildings used: [6, 7, 8, 9, 10]
+1 [ -70.25772923 -110.14540962  -45.10969537  -77.17774017 -106.76768739]
+Total time taken by agent: 1.1570882999999967s
+Total number of steps: 48
+Average Price Cost: 0.9713531818926185
+Average Emission Cost: 1.0050659661416452
+Average Grid Cost: 1.2166603639918177
+==> Score: 1.064359837342027
