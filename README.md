@@ -11,6 +11,7 @@ impressive success in many areas of machine learning. In this work, we will ther
 specifically investigate the [Decision Transformer](https://proceedings.neurips.cc/paper/2021/hash/7f489f642a0ddb10272b5c31057f0663-Abstract.html) model presented by Chen et al. for
 its applicability as an energy control system.
 
+![Environment](data/citylearn.jpg)
 ![Citylearn Banner](https://images.aicrowd.com/uploads/ckeditor/pictures/906/content_Card_Banner.jpg)
 
 Reference repository http://gitlab.aicrowd.com/adrien_forbu/neurips-2022-citylearn-challenge.git
