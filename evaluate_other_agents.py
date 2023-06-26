@@ -31,7 +31,7 @@ class Constants:
     agent = RBCAgent2()
     # agent = OrderEnforcingAgent()
 
-    print_interactions = True
+    print_interactions = False
 
 
 def action_space_to_dict(aspace):
@@ -62,14 +62,13 @@ def evaluate():
     print("========================= Start Evaluation ========================")
 
     env = Constants.env
+    obs_dict = env_reset(env)
 
     agent = Constants.agent
     print("==> Model:", agent.__class__.__name__)
 
     if isinstance(agent, OneActionAgent):
         print("Action to perform:", agent.action_to_perform)
-
-    obs_dict = env_reset(env)
 
     agent_time_elapsed = 0
 
@@ -84,6 +83,7 @@ def evaluate():
     episode_return = np.zeros(amount_buildings)
     episode_metrics = []
     interrupted = False
+    error = 0
 
     original_stdout = sys.stdout
     with open(Constants.file_to_save, 'w') as f:
@@ -100,16 +100,29 @@ def evaluate():
             while True:
 
                 observations, reward, done, _ = env.step(actions)
-                if Constants.print_interactions:
-                    print(num_steps, "Action", actions[-1])
-                    print(num_steps, "Reward", reward[-1])
-                    print(num_steps + 1, "State", np.array([observations[0][21], observations[1][21], observations[2][21], observations[3][21], observations[4][21]]))
+                if Constants.print_interactions and 0 <= observations[0][2] <= 24:
+                    print(num_steps, "Hour", observations[0][2])
+                    action_array = np.array([actions[0][0], actions[1][0], actions[2][0], actions[3][0], actions[4][0]])
+                    print("Action", action_array)
+                    print("Reward", reward)
+                    # solar_generation_array = np.array([observations[0][21], observations[1][21], observations[2][21], observations[3][21], observations[4][21]])
+                    # load_array = np.array([observations[0][20], observations[1][20], observations[2][20], observations[3][20], observations[4][20]])
+                    # solar_generation_surplus_array = solar_generation_array - load_array
+                    net_electricity_array = np.array([observations[0][23], observations[1][23], observations[2][23], observations[3][23], observations[4][23]])
+                    print("Net Electricity", net_electricity_array)
+                    storage_array = np.array([observations[0][22], observations[1][22], observations[2][22], observations[3][22], observations[4][22]])
+                    print("Storage", storage_array)
+                    # pricing_array = np.array([observations[0][24], observations[1][24], observations[2][24], observations[3][24], observations[4][24]])
+                    # print("Pricing", storage_array)
+                    # error_array = np.absolute((action_array - pricing_array)**1)
+                    # print("Error", error_array)
+                    # error += sum(error_array)
 
                 episode_return += reward
                 if done:
                     episodes_completed += 1
                     metrics_t = env.evaluate()
-                    metrics = {"price_cost": metrics_t[0], "emmision_cost": metrics_t[1], "grid_cost": metrics_t[2]}
+                    metrics = {"price_cost": metrics_t[0]*100, "emmision_cost": metrics_t[1]*100, "grid_cost": metrics_t[2]*100}
                     if np.any(np.isnan(metrics_t)):
                         raise ValueError("Episode metrics are nan, please contant organizers")
                     episode_metrics.append(metrics)
@@ -158,6 +171,8 @@ def evaluate():
             sys.stdout = original_stdout
             print("==> Score:", (price_cost + emission_cost + grid_cost) / 3)
         print("Evaluation saved in:", str(pathlib.Path(__file__).parent.resolve()) + '/' + Constants.file_to_save)
+
+        # print(error)
 
 
 if __name__ == '__main__':

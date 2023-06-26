@@ -243,7 +243,7 @@ def evaluate(DT_model, buildings_to_use, TR, evaluation_interval, simulation_sta
             if done:
                 episodes_completed += 1
                 metrics_t = env.evaluate()
-                metrics = {"price_cost": metrics_t[0], "emmision_cost": metrics_t[1], "grid_cost": metrics_t[2]}
+                metrics = {"price_cost": metrics_t[0]*100, "emmision_cost": metrics_t[1]*100, "grid_cost": metrics_t[2]*100}
                 if np.any(np.isnan(metrics_t)):
                     raise ValueError("Episode metrics are nan, please contant organizers")
                 episode_metrics.append(metrics)

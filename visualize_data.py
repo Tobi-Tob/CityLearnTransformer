@@ -1,9 +1,5 @@
-import pathlib
-import sys
 import numpy as np
-import time
 import matplotlib.pyplot as plt
-import scipy.stats as st
 
 from utils import init_environment
 from agents.random_agent import RandomAgent
@@ -94,7 +90,6 @@ def run_env_and_visualize():
     agent = Constants.agent
 
     obs_dict = env_reset(env)
-    # print(obs_dict['building_info'])
 
     actions = agent.register_reset(obs_dict)
 
