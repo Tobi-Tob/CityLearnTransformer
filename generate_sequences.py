@@ -1,4 +1,3 @@
-import os
 import random
 import warnings
 
@@ -31,8 +30,8 @@ list(
 
 
 class Constants:
-    file_prefix = "random"
-    sequence_length = 230  # should be divisor of environment simulation steps
+    file_prefix = "lstm"
+    sequence_length = 8759  # should be divisor of environment simulation steps
     episodes = 1
     state_dim = 28
     action_dim = 1
@@ -45,11 +44,11 @@ class Constants:
 
     env = init_environment(buildings_to_use)
 
-    agent = RandomAgent()
+    # agent = RandomAgent()
     # agent = OneActionAgent([0])
     # agent = BasicRBCAgent()
-    # agent = BetterRBCAgent()
-    # agent = OrderEnforcingAgent()
+    # agent = RBCAgent1()
+    agent = OrderEnforcingAgent()
 
     print_sequences = False
 
@@ -259,7 +258,7 @@ def generate_data():
 
     print("Total values to store: ", total_values)
 
-    ''' Format: [SEQUENCE_LENGTH] x [AMOUNT_BUILDINGS] x [AMOUNT_SEQUENCES] '''
+    ''' Format: [SEQUENCE_LENGTH] x [AMOUNT_BUILDINGS] x [AMOUNT_EPISODES] '''
     file_info = "_" + str(longest_sequence_length) + "x" + str(amount_buildings) + "x" + str(sequences_completed)
     file_extension = ".pkl"
     file_name = Constants.file_prefix + file_info + file_extension

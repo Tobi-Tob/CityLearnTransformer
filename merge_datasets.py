@@ -19,10 +19,10 @@ list(
 
 if __name__ == '__main__':
 
-    dataset1 = "./data/random_230x5x20.pkl"
-    dataset2 = "./data/random_230x5x38.pkl"
+    dataset1 = "./data/lstm_8759x5x1.pkl"
+    dataset2 = "./data/rb1_8759x5x1.pkl"
 
-    file_prefix = "merged"
+    file_prefix = "lstm_rb1"
 
     amount_buildings = 5
 
@@ -58,8 +58,8 @@ if __name__ == '__main__':
             if length_merged_data != len(data1) + len(data2):
                 warnings.warn(str(length_merged_data) + "!=" + str(len(data1)) + "+" + str(len(data2)))
 
-            ''' Format: file_prefix _ [SEQUENCE_LENGTH] x [AMOUNT_BUILDINGS] x [AMOUNT_SEQUENCES] '''
-            file_info = "_" + str(max(length1, length2)) + "x" + str(amount_buildings) + "x" + str(length_merged_data)
+            ''' Format: file_prefix _ [SEQUENCE_LENGTH] x [AMOUNT_BUILDINGS] x [AMOUNT_EPISODES] '''
+            file_info = "_" + str(max(length1, length2)) + "x" + str(amount_buildings) + "x" + str(int(length_merged_data/amount_buildings))
             file_extension = ".pkl"
             file_name = file_prefix + file_info + file_extension
             file_path = "./data/" + file_name
