@@ -109,7 +109,7 @@ def evaluate():
                     # load_array = np.array([observations[0][20], observations[1][20], observations[2][20], observations[3][20], observations[4][20]])
                     # solar_generation_surplus_array = solar_generation_array - load_array
                     net_electricity_array = np.array([observations[0][23], observations[1][23], observations[2][23], observations[3][23], observations[4][23]])
-                    print("Net Electricity", net_electricity_array)
+                    print("Consume", net_electricity_array)
                     storage_array = np.array([observations[0][22], observations[1][22], observations[2][22], observations[3][22], observations[4][22]])
                     print("Storage", storage_array)
                     # pricing_array = np.array([observations[0][24], observations[1][24], observations[2][24], observations[3][24], observations[4][24]])

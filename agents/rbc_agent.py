@@ -60,6 +60,7 @@ class RBCAgent1:
         actions = []
         hour = observation[0][2]
 
+        # Parameters:
         alpha = 0.076
         beta = 0.201
         gamma = 0.77
@@ -76,14 +77,14 @@ class RBCAgent1:
             else:
                 action = - beta * electrical_storage
 
-            #  slow down positive actions near storage limit
+            # Slow down positive actions near storage limit
             if action > 0:
                 if electrical_storage > 0.99:
                     action = 0
                 elif electrical_storage > 0.7:
                     action = gamma * action
 
-            #  clip actions to [1,-1]
+            # Clip actions to [1,-1]
             if action > 1:
                 action = 1
             if action < -1:
@@ -98,79 +99,64 @@ class RBCAgent2:
 
     def __init__(self):
         self.action_dim = 1
-        self.electricity_pricing = [None, None, None, None, None]
-        self.diffuse_solar_prediction = [None, None, None, None, None]
-        self.building_solar_power = None
         self.building_annual_demand = None
 
     def register_reset(self, obs_dict):
         """Get the first observation after env reset, return action"""
         obs = obs_dict["observation"]
         building_info = obs_dict["building_info"]
-        self.electricity_pricing = [None, None, None, None, None]
-        self.diffuse_solar_prediction = [None, None, None, None, None]
-        self.building_solar_power = [building['solar_power'] for building in building_info]
         self.building_annual_demand = [building['annual_nonshiftable_electrical_demand'] for building in building_info]
 
         return self.compute_action(obs)
 
     def compute_action(self, obs):
         """Get observation return action"""
-        self.electricity_pricing.append(obs[0][25])
-        electricity_pricing_predicted = self.electricity_pricing.pop(0)
-        if electricity_pricing_predicted is None:
-            electricity_pricing_predicted = obs[0][24]
-        self.diffuse_solar_prediction.append(obs[0][12])
-        diffuse_solar_predicted = self.diffuse_solar_prediction.pop(0)
-        if diffuse_solar_predicted is None:
-            diffuse_solar_predicted = obs[0][11]
-
         actions = []
         for b in range(len(obs)):
-            action = self.rbc_policy_2(obs[b], b, diffuse_solar_predicted, electricity_pricing_predicted)
+            action = self.rbc_policy_2(obs[b], b)
             actions.append(action)
         return actions
 
-    def rbc_policy_2(self, building_observation, building_id, diffuse_solar_predicted, electricity_pricing_predicted):
+    def rbc_policy_2(self, building_observation, building_id):
         """
         Rule based policy depending on daytime, solar_generation and electrical_storage.
         Parameters determined by manual search.
         """
-        alpha = 1.1
-        beta = 0.00075  # ohne ist besser
-        gamma = 0.5
-        delta = 0.2
-        epsilon = 4.5
-        zeta = 2.4
-        eta = 0.7
-        theta = 0.5
-        lota = 1.8
+        # Parameters:
+        annual_factor = 0.93
+        solar_factor = 0.141
+        carbon_weight = 5.3
+        pricing_weight = 2.53
+        price_upper_threshold = 1.52
+        sell_factor = 0.237
+        saturation_threshold = 0.5
+        saturation = 0.55
 
         action = 0
-        hour = building_observation[2]
-        day_type = building_observation[1]
-        month = building_observation[0]
         solar_generation = building_observation[21]
         electrical_storage = building_observation[22]
         carbon_intensity = building_observation[19]
-        peak_hour_of_solar_generation = 13 if (4 <= month <= 9) else 12
-
-        solar_power = self.building_solar_power[building_id]
+        electricity_pricing = building_observation[24]
         annual_nonshiftable_electrical_demand = self.building_annual_demand[building_id]
 
-        daytime_non_shiftable_load_predicted = alpha * annual_nonshiftable_electrical_demand / 8760
-        solar_generation_predicted = ((beta * solar_power * diffuse_solar_predicted) + solar_generation) / 2
-        solar_generation_surplus_predicted = solar_generation_predicted - daytime_non_shiftable_load_predicted
+        non_shiftable_load_predicted = annual_factor * annual_nonshiftable_electrical_demand / 8760
+        solar_generation_surplus_predicted = solar_generation - non_shiftable_load_predicted
 
-        if peak_hour_of_solar_generation - 3 <= hour <= peak_hour_of_solar_generation + 3:
-            if solar_generation_surplus_predicted >= gamma:
-                action = delta * solar_generation_surplus_predicted
-        assert(0 <= 1-electrical_storage <= 1)
-        price = epsilon * carbon_intensity + zeta * electricity_pricing_predicted
+        if solar_generation_surplus_predicted >= 0:
+            action = solar_factor * solar_generation_surplus_predicted
+        price = carbon_weight * carbon_intensity + pricing_weight * electricity_pricing
 
-        if price + electrical_storage <= eta:  # Favorable time to buy electricity and battery low
-            action += theta * (eta - price)
-        if price >= lota:  # Expensive time, make it more unlikely to buy energy (maybe need prediction of price)
-            action -= theta * (price - lota)
+        if price >= price_upper_threshold:  # Expensive time, make it more unlikely to buy energy
+            action -= sell_factor * (price - price_upper_threshold)
+
+        # Slow down positive actions near storage limit
+        if action > 0 and electrical_storage > saturation_threshold:
+            action = saturation * action
+
+        # Clip actions to [1,-1]
+        if action > 1:
+            action = 1
+        if action < -1:
+            action = -1
 
         return np.array([action])
