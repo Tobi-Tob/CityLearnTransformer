@@ -1,3 +1,5 @@
+# Transformers for Urban Energy Management
+
 Adapting the power grid to renewable energy source is a significant challenge for the
 upcoming years. One way to shift the energy demand to the peak times of renewable
 energy generation can be enabled through consumer-side control systems.
@@ -10,5 +12,6 @@ specifically investigate the [Decision Transformer](https://proceedings.neurips.
 its applicability as an energy control system.
 
 ![Citylearn Banner](https://images.aicrowd.com/uploads/ckeditor/pictures/906/content_Card_Banner.jpg)
+<img src="data/citylearn.jpg" width="440" height="424">
 
 Reference repository http://gitlab.aicrowd.com/adrien_forbu/neurips-2022-citylearn-challenge.git
