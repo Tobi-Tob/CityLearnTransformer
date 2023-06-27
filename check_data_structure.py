@@ -17,7 +17,7 @@ list(
 
 if __name__ == '__main__':
 
-    file = "./data/random_230x5x38.pkl"
+    file = "./data/rb1_8759x5x1.pkl"
     with open(file, "rb") as f:
         data = pickle.load(f)
 

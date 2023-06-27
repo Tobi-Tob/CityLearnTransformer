@@ -29,19 +29,16 @@ class Constants:
 
     # mean and std computed from training dataset these are available in the model card for each model.
     state_mean = np.array(
-        [6.524725274725275, 4.0, 12.5, 16.82414151013116, 16.824221638205287, 16.824931345033995, 16.826831528227846,
-         72.99347527472527, 72.99690934065934, 72.99771062271063, 72.99793956043956, 208.09832875457874,
-         208.09832875457874, 207.99828296703296, 208.04052197802199, 201.2047847985348, 201.2047847985348,
-         200.9787087912088, 201.07337454212455, 0.15644727026678676, 1.0649622487535593, 0.698845768454032,
-         0.2904772969099631, 0.40247679049702895, 0.2730940908121948, 0.2730940908121948, 0.2730940908121948,
-         0.2730940908121948])
+        [6.5258108725445405, 3.9938328003654635, 12.495888533576975, 16.835438582928774, 16.8364436081851, 16.8351873263424, 16.83594109544802,
+         73.00194152581088, 73.00159890360895, 73.00468250342622, 73.00331201461854, 208.37734125171312, 208.37734125171312, 208.07412060301507,
+         208.37734125171312, 201.32343535861125, 201.32343535861125, 201.02329830973048, 201.32343535861125, 0.15650889121656306, 1.0660572198321447,
+         0.6996744851494102, 0.3114116011768329, 0.4055029977036861, 0.27311900153061797, 0.2731555479014094, 0.2731555479014094,
+         0.27311900153061797])
     state_std = np.array(
-        [3.4524955084850806, 2.000001, 6.922187552431729, 3.5583904884633704, 3.5584332104834484, 3.559720599742466,
-         3.562993303420063, 16.49362637843077, 16.495771758046534, 16.497863950643264, 16.500000871352388,
-         292.60064712158606, 292.6006471215861, 292.5436886390131, 292.5922471173383, 296.26243575541076,
-         296.2624357554107, 296.1515750498725, 296.1759105708973, 0.03534180229853935, 0.8881956546478821,
-         1.016910381344171, 0.32314600746622574, 0.9214611934794803, 0.11775969542702672, 0.11775969542702658,
-         0.11775969542702643, 0.11775969542702633])
+        [3.448624886257293, 2.0028446548344565, 6.921053324573464, 3.5641740407546965, 3.5650968837736117, 3.563835894786529, 3.5647085756872103,
+         16.482666863957004, 16.48259414672693, 16.483047400488356, 16.482791365992696, 292.8157099908381, 292.8157099908381, 292.6599815157083,
+         292.8157099908379, 296.2128009345349, 296.212800934535, 296.07191230105434, 296.2128009345348, 0.035360925164597434, 0.8888972037880907,
+         1.017238714609665, 0.320700911474821, 0.9375259302784217, 0.11778525342986047, 0.11781840638096061, 0.1178184063809605, 0.11778525342985945])
 
 
 def preprocess_states(state_list_of_lists, amount_buildings):
@@ -74,9 +71,10 @@ def evaluate(DT_model, buildings_to_use, TR, evaluation_interval, simulation_sta
             DT_model: str
                 The model id of a pretrained model hosted inside a model repo on huggingface,
                 example: 'TobiTob/decision_transformer_fr_24'.
-            buildings_to_use: str
+            buildings_to_use: str or list
                 String to define which buildings are used in the environment.
                 One of: "train", "validation", "test"
+                List to define manually which buildings to use, example: [1, 2, 4, 15]
             TR: int
                 Target Return, hyperparameter of a DT model.
             evaluation_interval: int
@@ -243,7 +241,7 @@ def evaluate(DT_model, buildings_to_use, TR, evaluation_interval, simulation_sta
             if done:
                 episodes_completed += 1
                 metrics_t = env.evaluate()
-                metrics = {"price_cost": metrics_t[0]*100, "emmision_cost": metrics_t[1]*100, "grid_cost": metrics_t[2]*100}
+                metrics = {"price_cost": metrics_t[0] * 100, "emmision_cost": metrics_t[1] * 100, "grid_cost": metrics_t[2] * 100}
                 if np.any(np.isnan(metrics_t)):
                     raise ValueError("Episode metrics are nan, please contant organizers")
                 episode_metrics.append(metrics)
@@ -343,8 +341,8 @@ def evaluate(DT_model, buildings_to_use, TR, evaluation_interval, simulation_sta
 
 
 if __name__ == '__main__':
-    evaluate(DT_model="TobiTob/decision_transformer_fr_24", buildings_to_use="validation",
-             TR=-9000, evaluation_interval=24, simulation_start_end=[0, 8759])
+    evaluate(DT_model="TobiTob/decision_transformer_merged1", buildings_to_use=[6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
+             TR=-9000, evaluation_interval=168, simulation_start_end=[0, 8759])
 
 """
 Run in console:

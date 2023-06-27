@@ -8,7 +8,7 @@ import time
 from agents.one_action_agent import OneActionAgent
 from agents.orderenforcingwrapper import OrderEnforcingAgent
 from agents.random_agent import RandomAgent
-from agents.rbc_agent import BasicRBCAgent, RBCAgent1
+from agents.rbc_agent import BasicRBCAgent, RBCAgent1, RBCAgent2
 
 from utils import init_environment
 from utils import get_string_file_size
@@ -31,12 +31,12 @@ list(
 
 class Constants:
     file_prefix = "lstm"
-    sequence_length = 8759  # should be divisor of environment simulation steps
+    sequence_length = 2189  # should be divisor of environment simulation steps
     episodes = 1
     state_dim = 28
     action_dim = 1
 
-    probability_to_add_noise = 0.0  # 0.2
+    probability_to_add_noise = 0.0
     range_of_noise = [0, 0.08]
 
     #  [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
@@ -48,6 +48,7 @@ class Constants:
     # agent = OneActionAgent([0])
     # agent = BasicRBCAgent()
     # agent = RBCAgent1()
+    # agent = RBCAgent2()
     agent = OrderEnforcingAgent()
 
     print_sequences = False

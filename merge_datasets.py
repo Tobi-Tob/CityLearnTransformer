@@ -19,10 +19,10 @@ list(
 
 if __name__ == '__main__':
 
-    dataset1 = "./data/lstm_8759x5x1.pkl"
-    dataset2 = "./data/rb1_8759x5x1.pkl"
+    dataset1 = "./data/L_R1_2189x5x8.pkl"
+    dataset2 = "./data/R2_2189x5x4.pkl"
 
-    file_prefix = "lstm_rb1"
+    file_prefix = "L_R1_R2"
 
     amount_buildings = 5
 
