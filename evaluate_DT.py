@@ -1,7 +1,5 @@
 import os
 import pathlib
-import warnings
-
 import numpy as np
 import time
 import torch
@@ -22,46 +20,9 @@ class Constants:
     action_dim = 1  # size of action space
 
     """Model Constants"""
-
     scale = 1000.0  # normalization for rewards/returns
     force_download = True
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-    # mean and std computed from training dataset these are available in the model card for each model.
-    state_mean = np.array(
-        [6.5258108725445405, 3.9938328003654635, 12.495888533576975, 16.835438582928774, 16.8364436081851, 16.8351873263424, 16.83594109544802,
-         73.00194152581088, 73.00159890360895, 73.00468250342622, 73.00331201461854, 208.37734125171312, 208.37734125171312, 208.07412060301507,
-         208.37734125171312, 201.32343535861125, 201.32343535861125, 201.02329830973048, 201.32343535861125, 0.15650889121656306, 1.0660572198321485,
-         0.6996744851494102, 0.3115263159993547, 0.4017191970974243, 0.27311900153061797, 0.2731555479014094, 0.2731555479014094,
-         0.27311900153061797])
-    state_std = np.array(
-        [3.4486248862567828, 2.002844654833774, 6.9210533245737995, 3.564174040753756, 3.5650968837726316, 3.5638358947860853, 3.5647085756882184,
-         16.48266686395768, 16.482594146726807, 16.483047400487514, 16.482791365993066, 292.8157099906787, 292.81570999067844, 292.65998151565475,
-         292.8157099906801, 296.2128009343164, 296.21280093431614, 296.0719123008862, 296.2128009343163, 0.03536092516459741, 0.8888972037880845,
-         1.0172387146097517, 0.32361447450822595, 0.968425769352748, 0.11778525342989139, 0.11781840638086356, 0.1178184063808635,
-         0.1177852534298907])
-
-
-def preprocess_states(state_list_of_lists, amount_buildings):
-    for bi in range(amount_buildings):
-        for si in range(Constants.state_dim):
-            state_list_of_lists[bi][si] = (state_list_of_lists[bi][si] - Constants.state_mean[si]) / \
-                                          Constants.state_std[si]
-
-    return state_list_of_lists
-
-
-def calc_sequence_target_return(return_to_go_list, num_steps_in_episode, evaluation_interval, total_time_steps):
-    timesteps_left = total_time_steps - num_steps_in_episode
-    target_returns_for_next_sequence = []
-    for bi in range(len(return_to_go_list)):
-        required_reward_per_timestep = return_to_go_list[bi] / timesteps_left
-        if timesteps_left < evaluation_interval:
-            target_returns_for_next_sequence.append(required_reward_per_timestep * timesteps_left / Constants.scale)
-        else:
-            target_returns_for_next_sequence.append(
-                required_reward_per_timestep * evaluation_interval / Constants.scale)
-    return target_returns_for_next_sequence
 
 
 def evaluate(DT_model, buildings_to_use, TR, evaluation_interval, simulation_start_end=None, file_to_save='_results.txt'):
@@ -100,10 +61,15 @@ def evaluate(DT_model, buildings_to_use, TR, evaluation_interval, simulation_sta
         buildings_to_use = [6, 7, 8, 9, 10]
     elif buildings_to_use == "test":
         buildings_to_use = [11, 12, 13, 14, 15, 16, 17]
-    env = init_environment(buildings_to_use, simulation_start_end)
 
-    agent = MyDecisionTransformer(load_from=DT_model, force_download=Constants.force_download,
-                                  device=Constants.device)
+    env_params = dict(state_dim=Constants.state_dim, action_dim=Constants.action_dim, buildings_to_use=buildings_to_use,
+                      simulation_start_end=simulation_start_end)
+    agent_params = dict(load_from=DT_model, force_download=Constants.force_download, device=Constants.device, target_return=TR,
+                        scale_rewards=Constants.scale)
+
+    env = init_environment(**env_params)
+
+    agent = MyDecisionTransformer(**env_params, **agent_params)
 
     start_timestep = env.schema['simulation_start_time_step']
     end_timestep = env.schema['simulation_end_time_step']
@@ -115,15 +81,13 @@ def evaluate(DT_model, buildings_to_use, TR, evaluation_interval, simulation_sta
     context_length = agent.model.config.max_length
     amount_buildings = len(env.buildings)
 
-    print("Target Return:", TR)
+    print("Target Return:", agent.target_return)
     print("Context Length:", context_length)
     print("Evaluation Interval Length:", evaluation_interval)
     start_timestep = env.schema['simulation_start_time_step']
     end_timestep = env.schema['simulation_end_time_step']
     print("Environment simulation from", start_timestep, "to", end_timestep)
     print("Amount of buildings:", amount_buildings)
-
-    warnings.warn("Correct mean and std?")
 
     episodes_completed = 0
     sequences_completed = 0
@@ -133,12 +97,13 @@ def evaluate(DT_model, buildings_to_use, TR, evaluation_interval, simulation_sta
     agent_time_elapsed = 0
     episode_metrics = []
 
-    return_to_go_list = [TR] * amount_buildings
-    target_returns_for_next_sequence = calc_sequence_target_return(return_to_go_list, num_steps_in_episode, evaluation_interval, total_time_steps)
+    return_to_go_list = [agent.target_return] * amount_buildings
+    target_returns_for_next_sequence = agent.calc_sequence_target_return(return_to_go_list, num_steps_in_episode, evaluation_interval,
+                                                                         total_time_steps)
 
     # Initialize Tensors
     state_list_of_lists = env.reset()
-    state_list_of_lists = preprocess_states(state_list_of_lists, amount_buildings)
+    state_list_of_lists = agent.preprocess_states(state_list_of_lists, amount_buildings)
 
     state_list_of_tensors = []
     target_return_list_of_tensors = []
@@ -172,7 +137,7 @@ def evaluate(DT_model, buildings_to_use, TR, evaluation_interval, simulation_sta
     with open(file_to_save, 'w') as f:
         sys.stdout = f
         print("==> Model:", DT_model)
-        print("Target Return:", TR)
+        print("Target Return:", agent.target_return)
         print("Context Length:", context_length)
         print("Evaluation Interval Length:", evaluation_interval)
         start_timestep = env.schema['simulation_start_time_step']
@@ -186,8 +151,8 @@ def evaluate(DT_model, buildings_to_use, TR, evaluation_interval, simulation_sta
                 sequences_completed += 1
                 num_steps_in_sequence = 0
 
-                target_returns_for_next_sequence = calc_sequence_target_return(return_to_go_list, num_steps_in_episode, evaluation_interval,
-                                                                               total_time_steps)
+                target_returns_for_next_sequence = agent.calc_sequence_target_return(return_to_go_list, num_steps_in_episode, evaluation_interval,
+                                                                                     total_time_steps)
 
                 #  Reset History and only save last state
                 last_state_list_of_tensor = []
@@ -236,7 +201,7 @@ def evaluate(DT_model, buildings_to_use, TR, evaluation_interval, simulation_sta
 
             # Interaction with the environment
             state_list_of_lists, reward_list_of_lists, done, _ = env.step(next_actions)
-            state_list_of_lists = preprocess_states(state_list_of_lists, amount_buildings)
+            state_list_of_lists = agent.preprocess_states(state_list_of_lists, amount_buildings)
             episode_return += reward_list_of_lists
 
             if done:
@@ -255,13 +220,13 @@ def evaluate(DT_model, buildings_to_use, TR, evaluation_interval, simulation_sta
                 num_steps_in_episode = 0
                 num_steps_in_sequence = 0
 
-                return_to_go_list = [TR] * amount_buildings
-                target_returns_for_next_sequence = calc_sequence_target_return(return_to_go_list, num_steps_in_episode, evaluation_interval,
-                                                                               total_time_steps)
+                return_to_go_list = [agent.target_return] * amount_buildings
+                target_returns_for_next_sequence = agent.calc_sequence_target_return(return_to_go_list, num_steps_in_episode, evaluation_interval,
+                                                                                     total_time_steps)
 
                 episode_return = np.zeros(amount_buildings)
                 state_list_of_lists = env.reset()
-                state_list_of_lists = preprocess_states(state_list_of_lists, amount_buildings)
+                state_list_of_lists = agent.preprocess_states(state_list_of_lists, amount_buildings)
 
                 state_list_of_tensors = []
                 target_return_list_of_tensors = []
@@ -317,7 +282,7 @@ def evaluate(DT_model, buildings_to_use, TR, evaluation_interval, simulation_sta
 
             num_steps_total += 1
 
-            if num_steps_total % 100 == 0:
+            if num_steps_total % 500 == 0:
                 print(f"Num Steps: {num_steps_total}, Num episodes: {episodes_completed}")
 
             if episodes_completed >= Constants.episodes:
@@ -342,8 +307,8 @@ def evaluate(DT_model, buildings_to_use, TR, evaluation_interval, simulation_sta
 
 
 if __name__ == '__main__':
-    evaluate(DT_model="TobiTob/decision_transformer_merged1", buildings_to_use=[6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
-             TR=-9000, evaluation_interval=168, simulation_start_end=[0, 8759])
+    evaluate(DT_model="TobiTob/decision_transformer_merged3", buildings_to_use="validation",
+             TR=-9000, evaluation_interval=168, simulation_start_end=[0, 87])
 
 """
 Run in console:

@@ -4,7 +4,7 @@ from citylearn.citylearn import CityLearnEnv
 from citylearn.utilities import read_json
 
 
-def init_environment(buildings_to_use, simulation_start_end=None):
+def init_environment(buildings_to_use, simulation_start_end=None, **kwargs):
     r"""Initialize `CityLearnEnv` and returns the environment
 
         Parameters
